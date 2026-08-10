@@ -717,9 +717,18 @@ export default function App() {
                   <div className="image-placeholder">
                     <ParticleBg color="255, 140, 140" count={360} linkDistance={95} />
                     <AnimateWords>
-                      <span className="image-label">Adapt</span>
-                      <span className="image-label">Transform</span>
-                      <span className="image-label">Dominate</span>
+                      <div className="image-block">
+                        <span className="image-label">Adapt</span>
+                        <p className="image-desc">We watch the market closely and shift<br />before the wave even begins to move.</p>
+                      </div>
+                      <div className="image-block">
+                        <span className="image-label">Transform</span>
+                        <p className="image-desc">We rebuild your presence into something<br />sharper, faster, and built to win.</p>
+                      </div>
+                      <div className="image-block">
+                        <span className="image-label">Dominate</span>
+                        <p className="image-desc">Consistent systems and creative edge<br />put you ahead and keep you there.</p>
+                      </div>
                       <p className="image-caption">Where evolution meets innovation</p>
                     </AnimateWords>
                   </div>
@@ -744,9 +753,15 @@ export default function App() {
                   <div className="image-placeholder image-placeholder-3">
                     <ParticleBg color="0, 229, 255" count={360} linkDistance={95} />
                     <AnimateWords>
-                      <span className="image-label">Launch</span>
-                      <span className="image-label">Your</span>
-                      <span className="image-label">Evolution</span>
+                      <div className="image-block">
+                        <span className="image-label">Launch</span>
+                      </div>
+                      <div className="image-block">
+                        <span className="image-label">Your</span>
+                      </div>
+                      <div className="image-block">
+                        <span className="image-label">Evolution</span>
+                      </div>
                       <p className="image-caption">The future starts here</p>
                     </AnimateWords>
                   </div>

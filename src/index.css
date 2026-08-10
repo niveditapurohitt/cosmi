@@ -115,19 +115,43 @@ p {
     opacity: 0;
 }
 
-.anim-words.anim .image-label:nth-child(1) {
+.anim-words .image-desc {
+    opacity: 0;
+}
+
+.anim-words.anim .image-block:nth-child(1) .image-label {
     animation: wordFadeIn 0.8s ease-out forwards;
     animation-delay: 0.2s;
 }
 
-.anim-words.anim .image-label:nth-child(2) {
+.anim-words.anim .image-block:nth-child(1) .image-desc {
+    animation: wordFadeIn 0.8s ease-out forwards;
+    animation-delay: 0.6s;
+}
+
+.anim-words.anim .image-block:nth-child(2) .image-label {
     animation: wordSlideUp 0.8s ease-out forwards;
     animation-delay: 0.9s;
 }
 
-.anim-words.anim .image-label:nth-child(3) {
+.anim-words.anim .image-block:nth-child(2) .image-desc {
+    animation: wordFadeIn 0.8s ease-out forwards;
+    animation-delay: 1.3s;
+}
+
+.anim-words.anim .image-block:nth-child(3) .image-label {
     animation: wordScaleIn 0.8s ease-out forwards;
     animation-delay: 1.6s;
+}
+
+.anim-words.anim .image-block:nth-child(3) .image-desc {
+    animation: wordFadeIn 0.8s ease-out forwards;
+    animation-delay: 2s;
+}
+
+.anim-words.anim .image-caption {
+    animation: wordFadeIn 0.8s ease-out forwards;
+    animation-delay: 2.5s;
 }
 
 @keyframes wordFadeIn {
@@ -145,13 +169,44 @@ p {
     to { opacity: 1; transform: scale(1); }
 }
 
+.image-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
 .image-label {
     font-family: 'Times New Roman', serif;
-    font-size: 3.2rem;
+    font-size: 5.2rem;
     font-weight: 700;
     color: #beb8aa;
-    letter-spacing: 3px;
+    letter-spacing: 4px;
     text-transform: uppercase;
+    line-height: 1;
+}
+
+.image-desc {
+    font-family: 'Inter', sans-serif;
+    font-weight: 300;
+    font-size: 1.25rem;
+    line-height: 1.7;
+    color: rgba(255, 255, 255, 0.55);
+    letter-spacing: 0.5px;
+    text-align: center;
+    margin: 0;
+    max-width: 640px;
+}
+
+.image-section-adapt .image-placeholder-inner {
+    height: 100%;
+    box-sizing: border-box;
+    justify-content: center;
+    gap: 40px;
+    padding: 0;
+}
+
+.image-section-adapt .image-block {
+    gap: 14px;
 }
 
 .image-caption {
