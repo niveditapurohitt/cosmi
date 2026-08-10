@@ -190,150 +190,76 @@ function makeOptionTexture(title, text, accent, hover) {
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, 640, 200);
 
-  const rectL = 150;
-  const rectT = 20;
-  const rectW = 480;
-  const rectH = 160;
-  const rectR = 18;
-
-  const rectPath = () => {
+  // particle constellation like the DNA cards (transparent background)
+  const randN = (a, b) => a + Math.random() * (b - a);
+  const pts = [];
+  for (let i = 0; i < 22; i++) pts.push({ x: randN(12, 628), y: randN(12, 188) });
+  ctx.save();
+  ctx.strokeStyle = `rgba(${accent}, ${hover ? 0.32 : 0.2})`;
+  ctx.lineWidth = 1;
+  for (let i = 0; i < pts.length; i++) {
+    for (let j = i + 1; j < pts.length; j++) {
+      const dx = pts[i].x - pts[j].x;
+      const dy = pts[i].y - pts[j].y;
+      if (dx * dx + dy * dy < 12100) {
+        ctx.beginPath();
+        ctx.moveTo(pts[i].x, pts[i].y);
+        ctx.lineTo(pts[j].x, pts[j].y);
+        ctx.stroke();
+      }
+    }
+  }
+  ctx.fillStyle = `rgba(${accent}, ${hover ? 0.9 : 0.6})`;
+  for (const p of pts) {
     ctx.beginPath();
-    ctx.moveTo(rectL + rectR, rectT);
-    ctx.arcTo(rectL + rectW, rectT, rectL + rectW, rectT + rectH, rectR);
-    ctx.arcTo(rectL + rectW, rectT + rectH, rectL, rectT + rectH, rectR);
-    ctx.arcTo(rectL, rectT + rectH, rectL, rectT, rectR);
-    ctx.arcTo(rectL, rectT, rectL + rectW, rectT, rectR);
+    ctx.arc(p.x, p.y, 2.2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+
+  // subtle accent border
+  ctx.strokeStyle = `rgba(${accent}, ${hover ? 0.55 : 0.4})`;
+  ctx.lineWidth = 1.5;
+  const r = 18;
+  const rrect = () => {
+    ctx.beginPath();
+    ctx.moveTo(20 + r, 20);
+    ctx.arcTo(620, 20, 620, 180, r);
+    ctx.arcTo(620, 180, 20, 180, r);
+    ctx.arcTo(20, 180, 20, 20, r);
+    ctx.arcTo(20, 20, 620, 20, r);
     ctx.closePath();
   };
-
-  // galaxy background (the starfield behind the card)
-  const bg = ctx.createLinearGradient(0, 0, 0, 200);
-  bg.addColorStop(0, 'rgba(20, 23, 46, 1)');
-  bg.addColorStop(0.5, 'rgba(9, 12, 26, 1)');
-  bg.addColorStop(1, 'rgba(4, 6, 12, 1)');
-  ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, 640, 200);
-
-  // soft glowing star (matches the round additive star look of the 3D galaxy field)
-  const softStar = (sx, sy, sr, color) => {
-    const g = ctx.createRadialGradient(sx, sy, 0, sx, sy, sr);
-    g.addColorStop(0, color);
-    g.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.arc(sx, sy, sr, 0, Math.PI * 2);
-    ctx.fill();
-  };
-
-  // galaxy stars: soft round points with the same brightness/size range as the 3D starfield
-  for (let i = 0; i < 130; i++) {
-    const bright = Math.random();
-    const sr = 0.7 + bright * 2.0;
-    const alpha = 0.08 + bright * 0.5;
-    softStar(Math.random() * 640, Math.random() * 200, sr, `rgba(255,255,255,${alpha})`);
-  }
-  // a few larger faint accent-tinted glows, like the brighter stars of the galaxy
-  for (let i = 0; i < 10; i++) {
-    softStar(Math.random() * 640, Math.random() * 200, 2.5 + Math.random() * 1.8, `rgba(${accent}, 0.35)`);
-  }
-
-  // beam origin point (source of the release energy streaming into the panel)
-  const scx = 70;
-  const scy = 100;
-  const sr = hover ? 34 : 28;
-
-  // release beams: energy streaming from the origin into the rectangle
-  ctx.save();
-  ctx.globalCompositeOperation = 'lighter';
-  const cone = ctx.createLinearGradient(scx, 0, rectL, 0);
-  cone.addColorStop(0, `rgba(${accent}, ${hover ? 0.55 : 0.38})`);
-  cone.addColorStop(1, 'rgba(0,0,0,0)');
-  ctx.fillStyle = cone;
-  ctx.beginPath();
-  ctx.moveTo(scx, scy - sr * 0.4);
-  ctx.lineTo(rectL, rectT + 12);
-  ctx.lineTo(rectL, rectT + rectH - 12);
-  ctx.lineTo(scx, scy + sr * 0.4);
-  ctx.closePath();
-  ctx.fill();
-
-  const rays = [-0.34, -0.17, 0, 0.17, 0.34];
-  for (const ry of rays) {
-    const g = ctx.createLinearGradient(scx, scy, rectL + rectW, scy + ry * rectH);
-    g.addColorStop(0, `rgba(${accent}, ${hover ? 0.75 : 0.5})`);
-    g.addColorStop(0.5, `rgba(${accent}, 0.12)`);
-    g.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.strokeStyle = g;
-    ctx.lineWidth = 1.2;
-    ctx.beginPath();
-    ctx.moveTo(scx + sr * 0.6, scy + ry * sr * 0.5);
-    ctx.lineTo(rectL + rectW, scy + ry * rectH);
-    ctx.stroke();
-  }
-  ctx.restore();
-
-  // the released rectangle panel
-  const glass = ctx.createLinearGradient(0, rectT, 0, rectT + rectH);
-  glass.addColorStop(0, `rgba(16, 20, 40, ${hover ? 0.92 : 0.82})`);
-  glass.addColorStop(1, 'rgba(6, 9, 20, 0.9)');
-  rectPath();
-  ctx.fillStyle = glass;
-  ctx.fill();
-
-  // energy entering the rectangle from the star
-  ctx.save();
-  rectPath();
-  ctx.clip();
-  const innerG = ctx.createLinearGradient(rectL, 0, rectL + 150, 0);
-  innerG.addColorStop(0, `rgba(${accent}, ${hover ? 0.3 : 0.18})`);
-  innerG.addColorStop(1, 'rgba(0,0,0,0)');
-  ctx.fillStyle = innerG;
-  ctx.fillRect(rectL, rectT, 150, rectH);
-
-  const edgeG = ctx.createLinearGradient(0, rectT, 0, rectT + rectH);
-  edgeG.addColorStop(0, `rgba(${accent}, 0.95)`);
-  edgeG.addColorStop(0.5, `rgba(${accent}, 0.55)`);
-  edgeG.addColorStop(1, `rgba(${accent}, 0.8)`);
-  ctx.fillStyle = edgeG;
-  ctx.fillRect(rectL, rectT + 14, 4, rectH - 28);
-  ctx.restore();
-
-  const bGrad = ctx.createLinearGradient(rectL, 0, rectL + rectW, 0);
-  bGrad.addColorStop(0, `rgba(${accent}, ${hover ? 1 : 0.9})`);
-  bGrad.addColorStop(0.35, `rgba(${accent}, 0.55)`);
-  bGrad.addColorStop(1, `rgba(${accent}, 0.2)`);
-  ctx.strokeStyle = bGrad;
-  ctx.lineWidth = hover ? 2.5 : 2;
-  rectPath();
+  rrect();
   ctx.stroke();
 
-  // info inside the rectangle
+  // title
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
-  let size = 33;
+  let size = 38;
   ctx.font = `500 ${size}px "Fredoka"`;
-  const maxW = rectW - 92;
-  while (ctx.measureText(title).width > maxW && size > 19) {
+  const maxW = 600 - 60;
+  while (ctx.measureText(title).width > maxW && size > 20) {
     size -= 1;
     ctx.font = `500 ${size}px "Fredoka"`;
   }
-  const titleY = hover ? 72 : 100;
+  const titleY = hover ? 70 : 100;
   ctx.save();
-  ctx.shadowColor = `rgba(${accent}, 0.85)`;
-  ctx.shadowBlur = 16;
+  ctx.shadowColor = 'rgba(0,0,0,0.6)';
+  ctx.shadowBlur = 10;
   ctx.fillStyle = '#ffffff';
-  ctx.fillText(title, rectL + 24, titleY);
+  ctx.fillText(title, 24, titleY);
   ctx.restore();
 
   // details revealed on hover
   if (hover && text) {
     ctx.fillStyle = `rgba(${accent}, 0.9)`;
-    ctx.fillRect(rectL + 24, 102, 46, 3);
+    ctx.fillRect(24, 100, 46, 3);
     ctx.font = '400 18px "Fredoka"';
     ctx.fillStyle = 'rgba(255,255,255,0.85)';
     const lines = wrapText(ctx, text, maxW);
     lines.slice(0, 2).forEach((line, j) => {
-      ctx.fillText(line, rectL + 24, 120 + j * 24);
+      ctx.fillText(line, 24, 118 + j * 24);
     });
   }
 
@@ -346,6 +272,7 @@ function CameraTracker({ length, journey }) {
   const scroll = useScroll();
   const journeyScrollRef = useRef(null);
   const scrollerRef = useRef(null);
+  const journeyStartSnappedRef = useRef(false);
     useFrame((state, delta) => {
       const x = scroll.offset * length - (length / 2);
     if (journey) {
@@ -355,6 +282,10 @@ function CameraTracker({ length, journey }) {
       }
       if (scrollerRef.current) scrollerRef.current.scrollLeft = journeyScrollRef.current || 0;
       const cam = state.camera.position;
+      if (journey.card >= 2 && !journeyStartSnappedRef.current) {
+        journeyStartSnappedRef.current = true;
+        cam.set(JOURNEY_LEFT_START, 0, 0);
+      }
       if (cam.x < JOURNEY_CAM_ARRIVE) {
         cam.x = Math.min(cam.x + JOURNEY_WALK_SPEED * delta, JOURNEY_CAM_X);
       } else {
@@ -364,6 +295,7 @@ function CameraTracker({ length, journey }) {
       cam.y = THREE.MathUtils.lerp(cam.y, 0, 1 - Math.exp(-delta * 3.5));
       state.camera.lookAt(JOURNEY_END_X, JOURNEY_CAM_LOOK_Y, 0);
     } else {
+      journeyStartSnappedRef.current = false;
       journeyScrollRef.current = null;
       state.camera.position.x = THREE.MathUtils.lerp(state.camera.position.x, x, 0.05);
       const zOffset = Math.sin(scroll.offset * Math.PI) * 4;
@@ -399,51 +331,6 @@ function AnimateWords({ children }) {
   );
 }
 
-function MouseGlow() {
-  const ref = useRef();
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    let raf;
-    let mx = -1000, my = -1000;
-    let x = -1000, y = -1000;
-    let lastMove = -Infinity;
-    let running = false;
-
-    const loop = () => {
-      if (performance.now() - lastMove > 250) {
-        el.style.opacity = '0';
-        running = false;
-        return;
-      }
-      el.style.opacity = '1';
-      x += (mx - x) * 0.2;
-      y += (my - y) * 0.2;
-      el.style.transform = `translate3d(${x - 160}px, ${y - 160}px, 0)`;
-      raf = requestAnimationFrame(loop);
-    };
-    const start = () => {
-      if (running) return;
-      running = true;
-      loop();
-    };
-    const onMove = (e) => {
-      mx = e.clientX;
-      my = e.clientY;
-      lastMove = performance.now();
-      start();
-    };
-    window.addEventListener('mousemove', onMove);
-    return () => {
-      window.removeEventListener('mousemove', onMove);
-      cancelAnimationFrame(raf);
-    };
-  }, []);
-
-  return <div ref={ref} className="mouse-glow" />;
-}
-
 function ScrollSection({ children, scrollStart, scrollEnd, persist = false, style = {} }) {
   const ref = useRef();
   const scroll = useScroll();
@@ -477,20 +364,6 @@ function ScrollSection({ children, scrollStart, scrollEnd, persist = false, styl
   );
 }
 
-const glowTex = (() => {
-  const c = document.createElement('canvas');
-  c.width = 128;
-  c.height = 128;
-  const ctx = c.getContext('2d');
-  const g = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
-  g.addColorStop(0, 'rgba(255, 255, 255, 0.9)');
-  g.addColorStop(0.4, 'rgba(255, 255, 255, 0.35)');
-  g.addColorStop(1, 'rgba(255, 255, 255, 0)');
-  ctx.fillStyle = g;
-  ctx.fillRect(0, 0, 128, 128);
-  return new THREE.CanvasTexture(c);
-})();
-
 function useCardTexture(title, subtitle, accent, items) {
   const [tex, setTex] = useState(null);
 
@@ -517,6 +390,8 @@ function useCardTexture(title, subtitle, accent, items) {
   return tex;
 }
 
+const optionTexCache = new WeakMap();
+
 function useOptionTextures(items, accent) {
   const [texs, setTexs] = useState({ normal: [], hover: [] });
 
@@ -524,10 +399,15 @@ function useOptionTextures(items, accent) {
     let cancelled = false;
     const draw = () => {
       if (cancelled) return;
-      setTexs({
-        normal: items.map((it) => makeOptionTexture(it.title, it.text, accent, false)),
-        hover: items.map((it) => makeOptionTexture(it.title, it.text, accent, true)),
-      });
+      let entry = optionTexCache.get(items);
+      if (!entry) {
+        entry = {
+          normal: items.map((it) => makeOptionTexture(it.title, it.text, accent, false)),
+          hover: items.map((it) => makeOptionTexture(it.title, it.text, accent, true)),
+        };
+        optionTexCache.set(items, entry);
+      }
+      setTexs(entry);
     };
     Promise.all([
       document.fonts.load('500 33px "Fredoka"'),
@@ -542,9 +422,7 @@ function useOptionTextures(items, accent) {
 function OrbitingCard({ title, subtitle, color, items, stairIndex, totalCards, journey, onSelect }) {
   const groupRef = useRef();
   const meshRef = useRef();
-  const glowRef = useRef();
   const optionsRef = useRef([]);
-  const optionGlowRef = useRef([]);
   const optionHoverRef = useRef([]);
   const scroll = useScroll();
   const hoverRef = useRef(false);
@@ -553,8 +431,6 @@ function OrbitingCard({ title, subtitle, color, items, stairIndex, totalCards, j
   const posXRef = useRef(0);
   const posYZRef = useRef({ y: 0, z: 0 });
   const rotYRef = useRef(0);
-  const glowOpacityRef = useRef(0);
-  const journeyTRef = useRef(0);
 
   const worldX = -15 + stairIndex * 10 + 2.5;
   const orbitRadius = 4.5;
@@ -562,13 +438,12 @@ function OrbitingCard({ title, subtitle, color, items, stairIndex, totalCards, j
   const entryDur = 0.07;
   const flyIn = 6;
   const JOURNEY_CARD_SCALE = 1.3;
-  const OPTION_ROW = 2.2;
-  const OPTION_COL = 6.2;
-  const OPTION_SIZE = [5.6, 1.75];
+  const OPTION_ROW = 3.3;
+  const OPTION_COL = 9.3;
+  const OPTION_SIZE = [8.4, 2.63];
 
   const normalTex = useCardTexture(title, subtitle, color, null);
   const optionTexs = useOptionTextures(items, color);
-  const cardColor = 'rgb(' + color + ')';
 
   const isJourneying = journey !== null;
   const isJourneyTarget = isJourneying && journey.card === stairIndex;
@@ -583,7 +458,9 @@ function OrbitingCard({ title, subtitle, color, items, stairIndex, totalCards, j
         posXRef.current = THREE.MathUtils.lerp(posXRef.current, JOURNEY_END_X, 0.055);
         posYZRef.current.y = THREE.MathUtils.lerp(posYZRef.current.y, 0, 0.055);
         posYZRef.current.z = THREE.MathUtils.lerp(posYZRef.current.z, 0, 0.055);
-        rotYRef.current = THREE.MathUtils.lerp(rotYRef.current, -Math.PI / 2, 0.055);
+        const turnSign = stairIndex >= 2 ? 1 : -1;
+        const mirrorSign = stairIndex >= 2 ? -1 : 1;
+        rotYRef.current = THREE.MathUtils.lerp(rotYRef.current, turnSign * Math.PI / 2, 0.055);
         groupRef.current.position.set(posXRef.current, posYZRef.current.y, posYZRef.current.z);
         groupRef.current.rotation.set(0, rotYRef.current, 0);
         meshRef.current.rotation.x = THREE.MathUtils.lerp(meshRef.current.rotation.x, 0, 0.1);
@@ -596,13 +473,7 @@ function OrbitingCard({ title, subtitle, color, items, stairIndex, totalCards, j
         }
         meshRef.current.material.opacity = THREE.MathUtils.lerp(meshRef.current.material.opacity, 1, 0.08);
 
-        if (glowRef.current) {
-          glowOpacityRef.current = THREE.MathUtils.lerp(glowOpacityRef.current, 0, 0.15);
-          glowRef.current.material.opacity = 0;
-        }
-
-        journeyTRef.current += delta;
-        const optIn = THREE.MathUtils.clamp((journeyTRef.current - 3.5) / 1.5, 0, 1);
+        const optIn = THREE.MathUtils.clamp((state.camera.position.x - 18) / 8, 0, 1);
         for (let i = 0; i < optionsRef.current.length; i++) {
           const m = optionsRef.current[i];
           m.material.opacity = optIn;
@@ -612,13 +483,9 @@ function OrbitingCard({ title, subtitle, color, items, stairIndex, totalCards, j
             m.material.map = tex;
             m.material.needsUpdate = true;
           }
-          const ts = hover ? 1.09 : 1;
-          m.scale.x = THREE.MathUtils.lerp(m.scale.x, ts, 0.15);
+          const ts = hover ? 1.16 : 1;
+          m.scale.x = THREE.MathUtils.lerp(m.scale.x, mirrorSign * ts, 0.15);
           m.scale.y = THREE.MathUtils.lerp(m.scale.y, ts, 0.15);
-          if (optionGlowRef.current[i]) {
-            const g = optionGlowRef.current[i].material;
-            g.opacity = hover ? 0.75 * optIn : THREE.MathUtils.lerp(g.opacity, 0, 0.15);
-          }
         }
       } else {
         hoverRef.current = false;
@@ -629,7 +496,6 @@ function OrbitingCard({ title, subtitle, color, items, stairIndex, totalCards, j
 
     groupRef.current.visible = true;
     meshRef.current.visible = true;
-    journeyTRef.current = 0;
     meshRef.current.position.set(0, 0, 0);
     for (let i = 0; i < optionsRef.current.length; i++) {
       optionsRef.current[i].material.opacity = 0;
@@ -638,7 +504,6 @@ function OrbitingCard({ title, subtitle, color, items, stairIndex, totalCards, j
         optionsRef.current[i].material.map = optionTexs.normal[i];
         optionsRef.current[i].material.needsUpdate = true;
       }
-      if (optionGlowRef.current[i]) optionGlowRef.current[i].material.opacity = 0;
       optionHoverRef.current[i] = false;
     }
     if (!hoverRef.current && !optionHoverRef.current.some(Boolean)) {
@@ -690,12 +555,6 @@ function OrbitingCard({ title, subtitle, color, items, stairIndex, totalCards, j
     }
 
     meshRef.current.material.opacity = eased;
-
-    if (glowRef.current) {
-      const targetGlow = hoverRef.current ? 0.7 : 0;
-      glowOpacityRef.current = THREE.MathUtils.lerp(glowOpacityRef.current, targetGlow, 0.15);
-      glowRef.current.material.opacity = glowOpacityRef.current * eased;
-    }
   });
 
   return (
@@ -709,10 +568,6 @@ function OrbitingCard({ title, subtitle, color, items, stairIndex, totalCards, j
         >
           <planeGeometry args={[3.8, 2.65]} />
           <meshBasicMaterial map={normalTex} transparent opacity={0} side={THREE.DoubleSide} depthWrite={false} toneMapped={false} />
-          <mesh position={[0, 0, -0.08]} scale={[1.3, 1.3, 1]} raycast={() => null}>
-            <planeGeometry args={[3.8, 2.65]} />
-            <meshBasicMaterial map={glowTex} color={cardColor} transparent opacity={0} blending={THREE.AdditiveBlending} depthWrite={false} toneMapped={false} />
-          </mesh>
         </mesh>
       )}
       {optionTexs.normal.length > 0 && (
@@ -741,15 +596,6 @@ function OrbitingCard({ title, subtitle, color, items, stairIndex, totalCards, j
               >
                 <planeGeometry args={OPTION_SIZE} />
                 <meshBasicMaterial map={optionTexs.normal[i]} transparent opacity={0} side={THREE.DoubleSide} depthWrite={false} toneMapped={false} />
-                <mesh
-                  position={[0, 0, -0.05]}
-                  scale={[1.14, 1.5, 1]}
-                  raycast={() => null}
-                  ref={(el) => { if (el) optionGlowRef.current[i] = el; }}
-                >
-                  <planeGeometry args={OPTION_SIZE} />
-                  <meshBasicMaterial map={glowTex} color={cardColor} transparent opacity={0} blending={THREE.AdditiveBlending} depthWrite={false} toneMapped={false} />
-                </mesh>
               </mesh>
             );
           })}
@@ -767,8 +613,9 @@ const DNA_OFFSET = -6;
 const JOURNEY_END_X = 55;
 const JOURNEY_CAM_X = 30;
 const JOURNEY_CAM_LOOK_Y = 0.7;
-const JOURNEY_WALK_SPEED = 8;
+const JOURNEY_WALK_SPEED = 16;
 const JOURNEY_CAM_ARRIVE = 26;
+const JOURNEY_LEFT_START = -34;
 
 const sphereData = [
   {
@@ -912,7 +759,6 @@ export default function App() {
       {journey && (
         <button className="journey-back" onClick={() => setJourney(null)}>Back</button>
       )}
-      <MouseGlow />
     </div>
   );
 }

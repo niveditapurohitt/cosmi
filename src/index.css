@@ -48,20 +48,6 @@ p {
     font-weight: 300;
 }
 
-.mouse-glow {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 320px;
-    height: 320px;
-    border-radius: 50%;
-    background: radial-gradient(circle, rgba(0, 229, 255, 0.16) 0%, rgba(0, 229, 255, 0.05) 35%, transparent 70%);
-    mix-blend-mode: screen;
-    pointer-events: none;
-    z-index: 4;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-}
 .image-section {
     display: flex;
     flex-direction: column;
