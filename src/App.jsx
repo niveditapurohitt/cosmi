@@ -718,28 +718,16 @@ export default function App() {
                     <ParticleBg color="255, 140, 140" count={360} linkDistance={95} />
                     <AnimateWords>
                       <div className="image-block">
-                        <div className="image-block-head">
-                          <span className="image-index">01</span>
-                          <span className="image-label">Adapt</span>
-                        </div>
-                        <span className="image-rule" />
-                        <p className="image-desc">We watch the market closely and shift<br />before the wave even begins to move.</p>
+                        <span className="image-label">Adapt</span>
+                        <p className="image-desc">We watch the market closely, read the signals early, and shift before the wave even begins to move.</p>
                       </div>
                       <div className="image-block">
-                        <div className="image-block-head">
-                          <span className="image-index">02</span>
-                          <span className="image-label">Transform</span>
-                        </div>
-                        <span className="image-rule" />
-                        <p className="image-desc">We rebuild your presence into something<br />sharper, faster, and built to win.</p>
+                        <span className="image-label">Transform</span>
+                        <p className="image-desc">We rebuild your presence into something sharper, faster, more engaging, and built to win.</p>
                       </div>
                       <div className="image-block">
-                        <div className="image-block-head">
-                          <span className="image-index">03</span>
-                          <span className="image-label">Dominate</span>
-                        </div>
-                        <span className="image-rule" />
-                        <p className="image-desc">Consistent systems and creative edge<br />put you ahead and keep you there.</p>
+                        <span className="image-label">Dominate</span>
+                        <p className="image-desc">Consistent systems and creative edge put you ahead of the competition and keep you there.</p>
                       </div>
                       <p className="image-caption">Where evolution meets innovation</p>
                     </AnimateWords>
