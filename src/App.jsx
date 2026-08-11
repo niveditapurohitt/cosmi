@@ -364,6 +364,74 @@ function ScrollSection({ children, scrollStart, scrollEnd, persist = false, styl
   );
 }
 
+function smoothstep(a, b, x) {
+  const u = THREE.MathUtils.clamp((x - a) / Math.max(0.0001, b - a), 0, 1);
+  return u * u * (3 - 2 * u);
+}
+
+function AdaptStage({ scrollStart, scrollEnd, progressRef, blocks }) {
+  const scroll = useScroll();
+  const stageRef = useRef();
+  const lineRef = useRef();
+  const captionRef = useRef();
+  const blockRefs = [useRef(), useRef(), useRef()];
+
+  useFrame(() => {
+    if (!stageRef.current) return;
+    const t = THREE.MathUtils.clamp((scroll.offset - scrollStart) / Math.max(0.0001, scrollEnd - scrollStart), 0, 1);
+    if (progressRef) progressRef.current = t;
+
+    const [b0, b1, b2] = blockRefs;
+
+    if (b0.current) {
+      const op = 1 - smoothstep(0.55, 0.78, t);
+      const ty = smoothstep(0, 0.3, t) * 30;
+      b0.current.style.opacity = op.toFixed(3);
+      b0.current.style.transform = `translateY(${ty.toFixed(2)}px)`;
+    }
+    if (b1.current) {
+      const op = smoothstep(0.1, 0.28, t) * (1 - smoothstep(0.8, 0.95, t));
+      const sc = 0.82 + 0.2 * smoothstep(0.1, 0.32, t);
+      b1.current.style.opacity = op.toFixed(3);
+      b1.current.style.transform = `scale(${sc.toFixed(4)})`;
+    }
+    if (b2.current) {
+      const op = smoothstep(0.42, 0.58, t);
+      const ty = (1 - smoothstep(0.42, 0.66, t)) * 36;
+      b2.current.style.opacity = op.toFixed(3);
+      b2.current.style.transform = `translateY(${ty.toFixed(2)}px)`;
+    }
+    if (lineRef.current) {
+      lineRef.current.style.height = `${(12 + 76 * t).toFixed(2)}%`;
+    }
+    if (captionRef.current) {
+      captionRef.current.style.opacity = smoothstep(0.7, 0.88, t).toFixed(3);
+    }
+  });
+
+  return (
+    <div className="adapt-stage" ref={stageRef}>
+      <span className="adapt-line" ref={lineRef} />
+      <div className="adapt-blocks">
+        {blocks.map((b, i) => (
+          <div className="image-block" key={b.word} ref={blockRefs[i]} style={{ opacity: 0 }}>
+            <span className="image-index">{b.num}</span>
+            <div className="image-block-main">
+              <span className="image-label">{b.word}</span>
+              <p className="image-desc">{b.desc}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="image-caption-wrap" ref={captionRef} style={{ opacity: 0 }}>
+        <span className="image-caption-rule" />
+        <p className="image-caption">Where evolution meets innovation</p>
+        <span className="image-caption-arrow">↓</span>
+      </div>
+    </div>
+  );
+}
+
 function useCardTexture(title, subtitle, accent, items) {
   const [tex, setTex] = useState(null);
 
@@ -659,6 +727,7 @@ const sphereData = [
 
 export default function App() {
   const [journey, setJourney] = useState(null);
+  const adaptProgressRef = useRef(0);
   return (
     <div style={{ width: '100vw', height: '100vh', backgroundColor: '#020204', position: 'relative' }}>
       <Canvas camera={{ position: [-(CAMERA_RANGE / 2), 0, 18], fov: 45 }} dpr={[1, 1.25]}>
@@ -715,22 +784,17 @@ export default function App() {
               >
                 <div className="image-section image-section-adapt image-section-full">
                   <div className="image-placeholder">
-                    <ParticleBg color="255, 140, 140" count={360} linkDistance={95} />
-                    <AnimateWords>
-                      <div className="image-block">
-                        <span className="image-label">Adapt</span>
-                        <p className="image-desc">We watch the market closely, read the signals early, and shift before the wave even begins to move.</p>
-                      </div>
-                      <div className="image-block">
-                        <span className="image-label">Transform</span>
-                        <p className="image-desc">We rebuild your presence into something sharper, faster, more engaging, and built to win.</p>
-                      </div>
-                      <div className="image-block">
-                        <span className="image-label">Dominate</span>
-                        <p className="image-desc">Consistent systems and creative edge put you ahead of the competition and keep you there.</p>
-                      </div>
-                      <p className="image-caption">Where evolution meets innovation</p>
-                    </AnimateWords>
+                    <ParticleBg color="255, 140, 140" count={360} linkDistance={95} progressRef={adaptProgressRef} />
+                    <AdaptStage
+                      scrollStart={0.08}
+                      scrollEnd={0.24}
+                      progressRef={adaptProgressRef}
+                      blocks={[
+                        { num: '01', word: 'Adapt', desc: 'We watch the market closely, read the signals early, and shift before the wave even begins to move.' },
+                        { num: '02', word: 'Transform', desc: 'We rebuild your presence into something sharper, faster, more engaging, and built to win.' },
+                        { num: '03', word: 'Dominate', desc: 'Consistent systems and creative edge put you ahead of the competition and keep you there.' },
+                      ]}
+                    />
                   </div>
                 </div>
               </ScrollSection>
