@@ -268,13 +268,17 @@ function makeOptionTexture(title, text, accent, hover) {
   return texture;
 }
 
-function CameraTracker({ length, journey }) {
+function CameraTracker({ length, journey, mouseXRef, mouseYRef }) {
   const scroll = useScroll();
   const journeyScrollRef = useRef(null);
   const scrollerRef = useRef(null);
   const journeyStartSnappedRef = useRef(false);
+
     useFrame((state, delta) => {
       const x = scroll.offset * length - (length / 2);
+      const k = 1 - Math.exp(-delta * 5);
+      const py = mouseYRef.current;
+      const px = mouseXRef.current;
     if (journey) {
       if (scrollerRef.current === null) scrollerRef.current = scroll.el || null;
       if (journeyScrollRef.current === null && scrollerRef.current) {
@@ -292,16 +296,16 @@ function CameraTracker({ length, journey }) {
         cam.x = THREE.MathUtils.lerp(cam.x, JOURNEY_CAM_X, 1 - Math.exp(-delta * 2.2));
       }
       cam.z = THREE.MathUtils.lerp(cam.z, 0, 1 - Math.exp(-delta * 6));
-      cam.y = THREE.MathUtils.lerp(cam.y, 0, 1 - Math.exp(-delta * 3.5));
-      state.camera.lookAt(JOURNEY_END_X, JOURNEY_CAM_LOOK_Y, 0);
+      cam.y = THREE.MathUtils.lerp(cam.y, -py * 1.2, 1 - Math.exp(-delta * 3.5));
+      state.camera.lookAt(JOURNEY_END_X + px * 0.6, JOURNEY_CAM_LOOK_Y - py * 1.0, 0);
     } else {
       journeyStartSnappedRef.current = false;
       journeyScrollRef.current = null;
       state.camera.position.x = THREE.MathUtils.lerp(state.camera.position.x, x, 0.05);
       const zOffset = Math.sin(scroll.offset * Math.PI) * 4;
       state.camera.position.z = THREE.MathUtils.lerp(state.camera.position.z, 18 - zOffset, 0.05);
-      state.camera.position.y = THREE.MathUtils.lerp(state.camera.position.y, 0, 0.05);
-      state.camera.lookAt(x, 0, 0);
+      state.camera.position.y = THREE.MathUtils.lerp(state.camera.position.y, -py * 1.35, k);
+      state.camera.lookAt(x + px * 1.5, -py * 0.8, 0);
     }
   });
   return null;
@@ -487,11 +491,352 @@ function useOptionTextures(items, accent) {
   return texs;
 }
 
-function OrbitingCard({ title, subtitle, color, items, stairIndex, totalCards, journey, onSelect }) {
+function useOptionTexture(item, accent, hover) {
+  const [tex, setTex] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const draw = () => {
+      if (cancelled) return;
+      setTex(makeOptionTexture(item.title, item.text, accent, hover));
+    };
+    Promise.all([
+      document.fonts.load('500 33px "Fredoka"'),
+      document.fonts.ready,
+    ]).then(draw).catch(draw);
+    return () => { cancelled = true; };
+  }, [item, accent, hover]);
+
+  return tex;
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+function makeSectionsTexture(item, category, accent) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1000;
+  canvas.height = 1300;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, 1000, 1300);
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  const bg = ctx.createLinearGradient(0, 0, 0, 1300);
+  bg.addColorStop(0, 'rgba(10, 14, 20, 1)');
+  bg.addColorStop(1, 'rgba(4, 6, 11, 1)');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, 1000, 1300);
+
+  ctx.save();
+  const path = () => {
+    ctx.beginPath();
+    ctx.moveTo(40 + 22, 40);
+    ctx.arcTo(960, 40, 960, 1260, 22);
+    ctx.arcTo(960, 1260, 40, 1260, 22);
+    ctx.arcTo(40, 1260, 40, 40, 22);
+    ctx.arcTo(40, 40, 960, 40, 22);
+    ctx.closePath();
+  };
+  path();
+  ctx.clip();
+
+  const randN = (a, b) => a + Math.random() * (b - a);
+  const pts = [];
+  for (let i = 0; i < 90; i++) pts.push({ x: randN(24, 976), y: randN(24, 1276) });
+  ctx.save();
+  ctx.strokeStyle = `rgba(${accent}, 0.16)`;
+  ctx.lineWidth = 1;
+  for (let i = 0; i < pts.length; i++) {
+    for (let j = i + 1; j < pts.length; j++) {
+      const dx = pts[i].x - pts[j].x;
+      const dy = pts[i].y - pts[j].y;
+      if (dx * dx + dy * dy < 16900) {
+        ctx.beginPath();
+        ctx.moveTo(pts[i].x, pts[i].y);
+        ctx.lineTo(pts[j].x, pts[j].y);
+        ctx.stroke();
+      }
+    }
+  }
+  ctx.fillStyle = `rgba(${accent}, 0.5)`;
+  for (const p of pts) {
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 2.2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+
+  ctx.strokeStyle = `rgba(${accent}, 0.45)`;
+  ctx.lineWidth = 1.5;
+  path();
+  ctx.stroke();
+
+  ctx.fillStyle = `rgba(${accent}, 0.9)`;
+  ctx.fillRect(40, 40, 920, 3);
+
+  ctx.font = '500 28px "Fredoka"';
+  ctx.fillStyle = `rgba(${accent}, 0.9)`;
+  ctx.fillText(String(category || '').toUpperCase(), 500, 100);
+
+  ctx.font = '500 58px "Fredoka"';
+  const maxW = 840;
+  let title = item.title || '';
+  let ts = 58;
+  ctx.font = `500 ${ts}px "Fredoka"`;
+  while (ctx.measureText(title).width > maxW && ts > 32) {
+    ts -= 2;
+    ctx.font = `500 ${ts}px "Fredoka"`;
+  }
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,0,0,0.7)';
+  ctx.shadowBlur = 14;
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText(title, 500, 205);
+  ctx.restore();
+
+  ctx.fillStyle = `rgba(${accent}, 0.9)`;
+  ctx.fillRect(400, 265, 200, 4);
+
+  const cards = item.sections || [];
+  const cardY0 = 330;
+  const cardH = 262;
+  const cardGap = 20;
+  cards.forEach((sec, i) => {
+    const cy = cardY0 + i * (cardH + cardGap);
+
+    const cardGrad = ctx.createLinearGradient(0, cy, 0, cy + cardH);
+    cardGrad.addColorStop(0, 'rgba(18, 24, 34, 0.96)');
+    cardGrad.addColorStop(1, 'rgba(8, 12, 18, 0.96)');
+    ctx.fillStyle = cardGrad;
+    roundRect(ctx, 70, cy, 860, cardH, 18);
+    ctx.fill();
+    ctx.strokeStyle = `rgba(${accent}, 0.25)`;
+    ctx.lineWidth = 1;
+    roundRect(ctx, 70, cy, 860, cardH, 18);
+    ctx.stroke();
+
+    const vx = 92;
+    const vy = cy + 26;
+    const vw = 340;
+    const vh = 210;
+    const vGrad = ctx.createLinearGradient(vx, vy, vx, vy + vh);
+    vGrad.addColorStop(0, 'rgba(32, 42, 58, 1)');
+    vGrad.addColorStop(1, 'rgba(12, 18, 28, 1)');
+    ctx.fillStyle = vGrad;
+    roundRect(ctx, vx, vy, vw, vh, 12);
+    ctx.fill();
+    ctx.strokeStyle = `rgba(${accent}, 0.4)`;
+    ctx.lineWidth = 1.5;
+    roundRect(ctx, vx, vy, vw, vh, 12);
+    ctx.stroke();
+
+    ctx.font = '600 18px "Inter"';
+    ctx.fillStyle = `rgba(${accent}, 0.9)`;
+    ctx.fillText('VIDEO', vx + vw / 2, vy + 28);
+
+    const pcx = vx + vw / 2;
+    const pcy = vy + vh / 2;
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    ctx.beginPath();
+    ctx.arc(pcx, pcy, 34, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = `rgba(${accent}, 0.95)`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(pcx, pcy, 34, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.moveTo(pcx - 11, pcy - 16);
+    ctx.lineTo(pcx + 15, pcy);
+    ctx.lineTo(pcx - 11, pcy + 16);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.textAlign = 'left';
+    ctx.font = '500 20px "Inter"';
+    ctx.fillStyle = `rgba(${accent}, 0.9)`;
+    ctx.fillText(String(sec.tag || sec.label).toUpperCase(), 458, cy + 48);
+
+    ctx.font = '500 40px "Fredoka"';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(sec.label, 458, cy + 106);
+
+    ctx.font = '400 23px "Fredoka"';
+    ctx.fillStyle = 'rgba(255,255,255,0.78)';
+    const dl = wrapText(ctx, sec.text || '', 440);
+    dl.slice(0, 2).forEach((line, j) => ctx.fillText(line, 458, cy + 168 + j * 34));
+    ctx.textAlign = 'center';
+  });
+
+  ctx.strokeStyle = `rgba(${accent}, 0.3)`;
+  ctx.lineWidth = 1;
+  ctx.setLineDash([6, 8]);
+  ctx.beginPath();
+  ctx.moveTo(200, 1200);
+  ctx.lineTo(800, 1200);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.font = '500 26px "Fredoka"';
+  ctx.fillStyle = 'rgba(255,255,255,0.45)';
+  ctx.fillText('Cosmi Chameleon', 500, 1255);
+
+  ctx.restore();
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.needsUpdate = true;
+  return texture;
+}
+
+function makeDetailTexture(item, category, accent) {
+  if (item.sections && item.sections.length) return makeSectionsTexture(item, category, accent);
+  const canvas = document.createElement('canvas');
+  canvas.width = 1000;
+  canvas.height = 1300;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, 1000, 1300);
+
+  const bg = ctx.createLinearGradient(0, 0, 0, 1300);
+  bg.addColorStop(0, 'rgba(10, 14, 20, 1)');
+  bg.addColorStop(1, 'rgba(4, 6, 11, 1)');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, 1000, 1300);
+
+  ctx.save();
+  const path = () => {
+    ctx.beginPath();
+    ctx.moveTo(40 + 22, 40);
+    ctx.arcTo(960, 40, 960, 1260, 22);
+    ctx.arcTo(960, 1260, 40, 1260, 22);
+    ctx.arcTo(40, 1260, 40, 40, 22);
+    ctx.arcTo(40, 40, 960, 40, 22);
+    ctx.closePath();
+  };
+  path();
+  ctx.clip();
+
+  const randN = (a, b) => a + Math.random() * (b - a);
+  const pts = [];
+  for (let i = 0; i < 90; i++) pts.push({ x: randN(24, 976), y: randN(24, 1276) });
+  ctx.save();
+  ctx.strokeStyle = `rgba(${accent}, 0.16)`;
+  ctx.lineWidth = 1;
+  for (let i = 0; i < pts.length; i++) {
+    for (let j = i + 1; j < pts.length; j++) {
+      const dx = pts[i].x - pts[j].x;
+      const dy = pts[i].y - pts[j].y;
+      if (dx * dx + dy * dy < 16900) {
+        ctx.beginPath();
+        ctx.moveTo(pts[i].x, pts[i].y);
+        ctx.lineTo(pts[j].x, pts[j].y);
+        ctx.stroke();
+      }
+    }
+  }
+  ctx.fillStyle = `rgba(${accent}, 0.5)`;
+  for (const p of pts) {
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 2.2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+  ctx.restore();
+
+  ctx.strokeStyle = `rgba(${accent}, 0.45)`;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(40 + 22, 40);
+  ctx.arcTo(960, 40, 960, 1260, 22);
+  ctx.arcTo(960, 1260, 40, 1260, 22);
+  ctx.arcTo(40, 1260, 40, 40, 22);
+  ctx.arcTo(40, 40, 960, 40, 22);
+  ctx.closePath();
+  ctx.stroke();
+
+  ctx.fillStyle = `rgba(${accent}, 0.9)`;
+  ctx.fillRect(40, 40, 920, 3);
+
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = '500 30px "Fredoka"';
+  ctx.fillStyle = `rgba(${accent}, 0.9)`;
+  ctx.fillText(String(category || '').toUpperCase(), 500, 170);
+
+  let size = 72;
+  ctx.font = `500 ${size}px "Fredoka"`;
+  const maxW = 840;
+  while (ctx.measureText(item.title).width > maxW && size > 30) {
+    size -= 2;
+    ctx.font = `500 ${size}px "Fredoka"`;
+  }
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,0,0,0.7)';
+  ctx.shadowBlur = 14;
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText(item.title, 500, 340);
+  ctx.restore();
+
+  ctx.fillStyle = `rgba(${accent}, 0.9)`;
+  ctx.fillRect(400, 440, 200, 4);
+
+  ctx.font = '400 44px "Fredoka"';
+  ctx.fillStyle = 'rgba(255,255,255,0.92)';
+  const lines = wrapText(ctx, item.text || '', 760);
+  lines.slice(0, 4).forEach((line, j) => {
+    ctx.fillText(line, 500, 590 + j * 70);
+  });
+
+  ctx.strokeStyle = `rgba(${accent}, 0.3)`;
+  ctx.lineWidth = 1;
+  ctx.setLineDash([6, 8]);
+  ctx.beginPath();
+  ctx.moveTo(200, 1100);
+  ctx.lineTo(800, 1100);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.font = '500 28px "Fredoka"';
+  ctx.fillStyle = 'rgba(255,255,255,0.45)';
+  ctx.fillText('Cosmi Chameleon', 500, 1170);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.needsUpdate = true;
+  return texture;
+}
+
+function useDetailTexture(item, category, accent) {
+  const [tex, setTex] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const draw = () => {
+      if (cancelled) return;
+      setTex(makeDetailTexture(item, category, accent));
+    };
+    Promise.all([
+      document.fonts.load('500 72px "Fredoka"'),
+      document.fonts.load('400 44px "Fredoka"'),
+      document.fonts.ready,
+    ]).then(draw).catch(draw);
+    return () => { cancelled = true; };
+  }, [item, category, accent]);
+
+  return tex;
+}
+
+function OrbitingCard({ title, subtitle, color, items, stairIndex, totalCards, journey, onSelect, selectedIndex, onOptionClick }) {
   const groupRef = useRef();
   const meshRef = useRef();
+  const wrapRef = useRef();
   const optionsRef = useRef([]);
   const optionHoverRef = useRef([]);
+  const selectedRef = useRef(null);
   const scroll = useScroll();
   const hoverRef = useRef(false);
   const angleRef = useRef(0);
@@ -512,6 +857,12 @@ function OrbitingCard({ title, subtitle, color, items, stairIndex, totalCards, j
 
   const normalTex = useCardTexture(title, subtitle, color, null);
   const optionTexs = useOptionTextures(items, color);
+
+  useEffect(() => {
+    selectedRef.current = selectedIndex;
+    for (let i = 0; i < optionHoverRef.current.length; i++) optionHoverRef.current[i] = false;
+    document.body.style.cursor = 'auto';
+  }, [selectedIndex]);
 
   const isJourneying = journey !== null;
   const isJourneyTarget = isJourneying && journey.card === stairIndex;
@@ -542,18 +893,61 @@ function OrbitingCard({ title, subtitle, color, items, stairIndex, totalCards, j
         meshRef.current.material.opacity = THREE.MathUtils.lerp(meshRef.current.material.opacity, 1, 0.08);
 
         const optIn = THREE.MathUtils.clamp((state.camera.position.x - 18) / 8, 0, 1);
-        for (let i = 0; i < optionsRef.current.length; i++) {
-          const m = optionsRef.current[i];
-          m.material.opacity = optIn;
-          const hover = !!optionHoverRef.current[i];
-          const tex = hover ? optionTexs.hover[i] : optionTexs.normal[i];
-          if (tex && m.material.map !== tex) {
-            m.material.map = tex;
-            m.material.needsUpdate = true;
+        const sel = selectedRef.current;
+        if (sel !== null) {
+          const cam = state.camera;
+          for (let i = 0; i < optionsRef.current.length; i++) {
+            const m = optionsRef.current[i];
+            const hover = !!optionHoverRef.current[i];
+            const tex = hover ? optionTexs.hover[i] : optionTexs.normal[i];
+            if (tex && m.material.map !== tex) {
+              m.material.map = tex;
+              m.material.needsUpdate = true;
+            }
+            if (i === sel) {
+              m.visible = true;
+              const col = i % 2;
+              const row = Math.floor(i / 2);
+              const lastRowAlone = items.length % 2 === 1 && row === Math.floor(items.length / 2);
+              const thumbX = lastRowAlone ? 0 : (col === 0 ? THUMB_NDC_X : -THUMB_NDC_X);
+              _ndcVec.set(thumbX, THUMB_NDC_Y, 0.5).unproject(cam);
+              _dirVec.copy(_ndcVec).sub(cam.position).normalize();
+              _tVec.copy(cam.position).addScaledVector(_dirVec, THUMB_DEPTH);
+              const local = wrapRef.current ? wrapRef.current.worldToLocal(_ndcVec.copy(_tVec)) : _ndcVec;
+              m.position.x = THREE.MathUtils.lerp(m.position.x, local.x, 0.09);
+              m.position.y = THREE.MathUtils.lerp(m.position.y, local.y, 0.09);
+              m.position.z = THREE.MathUtils.lerp(m.position.z, local.z, 0.09);
+              m.scale.x = THREE.MathUtils.lerp(m.scale.x, mirrorSign * THUMB_SCALE, 0.09);
+              m.scale.y = THREE.MathUtils.lerp(m.scale.y, THUMB_SCALE, 0.09);
+              m.material.opacity = THREE.MathUtils.lerp(m.material.opacity, 1, 0.09);
+            } else {
+              m.material.opacity = THREE.MathUtils.lerp(m.material.opacity, 0, 0.12);
+              if (m.material.opacity < 0.03) m.visible = false;
+            }
           }
-          const ts = hover ? 1.16 : 1;
-          m.scale.x = THREE.MathUtils.lerp(m.scale.x, mirrorSign * ts, 0.15);
-          m.scale.y = THREE.MathUtils.lerp(m.scale.y, ts, 0.15);
+        } else {
+          for (let i = 0; i < optionsRef.current.length; i++) {
+            const m = optionsRef.current[i];
+            m.visible = true;
+            m.material.opacity = optIn;
+            const hover = !!optionHoverRef.current[i];
+            const tex = hover ? optionTexs.hover[i] : optionTexs.normal[i];
+            if (tex && m.material.map !== tex) {
+              m.material.map = tex;
+              m.material.needsUpdate = true;
+            }
+            const ts = hover ? 1.16 : 1;
+            m.scale.x = THREE.MathUtils.lerp(m.scale.x, mirrorSign * ts, 0.15);
+            m.scale.y = THREE.MathUtils.lerp(m.scale.y, ts, 0.15);
+            const col = i % 2;
+            const row = Math.floor(i / 2);
+            const lastRowAlone = items.length % 2 === 1 && row === Math.floor(items.length / 2);
+            const baseX = lastRowAlone ? 0 : (col === 0 ? -OPTION_COL / 2 : OPTION_COL / 2);
+            const baseY = -row * OPTION_ROW;
+            m.position.x = THREE.MathUtils.lerp(m.position.x, baseX, 0.09);
+            m.position.y = THREE.MathUtils.lerp(m.position.y, baseY, 0.09);
+            m.position.z = THREE.MathUtils.lerp(m.position.z, 0, 0.09);
+          }
         }
       } else {
         hoverRef.current = false;
@@ -639,7 +1033,7 @@ function OrbitingCard({ title, subtitle, color, items, stairIndex, totalCards, j
         </mesh>
       )}
       {optionTexs.normal.length > 0 && (
-        <group position={[0, ((Math.ceil(items.length / 2) - 1) * OPTION_ROW) / 2 + 0.7, 0]}>
+        <group ref={wrapRef} position={[0, ((Math.ceil(items.length / 2) - 1) * OPTION_ROW) / 2 + 0.7, 0]}>
           {items.map((it, i) => {
             const col = i % 2;
             const row = Math.floor(i / 2);
@@ -661,6 +1055,10 @@ function OrbitingCard({ title, subtitle, color, items, stairIndex, totalCards, j
                   optionHoverRef.current[i] = false;
                   if (!optionHoverRef.current.some(Boolean)) document.body.style.cursor = 'auto';
                 }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (isJourneying) onOptionClick(i);
+                }}
               >
                 <planeGeometry args={OPTION_SIZE} />
                 <meshBasicMaterial map={optionTexs.normal[i]} transparent opacity={0} side={THREE.DoubleSide} depthWrite={false} toneMapped={false} />
@@ -673,10 +1071,32 @@ function OrbitingCard({ title, subtitle, color, items, stairIndex, totalCards, j
   );
 }
 
+function DetailPanel({ item, category, color }) {
+  const tex = useDetailTexture(item, category, color);
+  const ref = useRef();
+  const appearRef = useRef(0);
+
+  useFrame((state, delta) => {
+    if (!ref.current || !tex) return;
+    appearRef.current = Math.min(1, appearRef.current + delta * 3.2);
+    ref.current.position.y = THREE.MathUtils.lerp(ref.current.position.y, JOURNEY_CAM_LOOK_Y, 1 - Math.exp(-delta * 4));
+    ref.current.material.opacity = appearRef.current;
+    ref.current.scale.setScalar(0.9 + 0.1 * appearRef.current);
+  });
+
+  return (
+    <mesh ref={ref} position={[JOURNEY_END_X, JOURNEY_CAM_LOOK_Y + 2, 0]} rotation={[0, -Math.PI / 2, 0]}>
+      <planeGeometry args={DETAIL_SIZE} />
+      <meshBasicMaterial map={tex} transparent opacity={0} side={THREE.DoubleSide} depthWrite={false} toneMapped={false} />
+    </mesh>
+  );
+}
+
 const TOTAL_PAGES = 6;
 const DNA_LENGTH = 60;
 const CAMERA_RANGE = 66;
 const DNA_OFFSET = -6;
+const DNA_JOURNEY_SHIFT = 14;
 
 const JOURNEY_END_X = 55;
 const JOURNEY_CAM_X = 30;
@@ -685,14 +1105,31 @@ const JOURNEY_WALK_SPEED = 16;
 const JOURNEY_CAM_ARRIVE = 26;
 const JOURNEY_LEFT_START = -34;
 
+const THUMB_NDC_X = -0.75;
+const THUMB_NDC_Y = 0.87;
+const THUMB_SCALE = 0.62;
+const THUMB_DEPTH = 25;
+const DETAIL_SIZE = [10, 13];
+
+const _tVec = new THREE.Vector3();
+const _dirVec = new THREE.Vector3();
+const _ndcVec = new THREE.Vector3();
+
 const sphereData = [
   {
     title: "Our Expertise", subtitle: "Innovation", color: "255, 140, 60", stairIndex: 0,
     items: [
-      { title: "Website Development", text: "Modern, blazing-fast sites built to convert." },
+      { title: "Website Development", text: "Modern, blazing-fast sites built to convert.", sections: [
+        { label: "Static Websites", tag: "STATIC", text: "Fast, brochure-style pages that present your brand with clean, dependable structure.", video: "static.mp4" },
+        { label: "Dynamic Websites", tag: "DYNAMIC", text: "Content-driven builds with CMS power, live updates and real user interaction.", video: "dynamic.mp4" },
+        { label: "E-commerce Websites", tag: "E-COMMERCE", text: "Complete storefronts with secure checkout, product flows and conversion focus.", video: "ecommerce.mp4" },
+      ] },
       { title: "Lead Generation", text: "Targeted pipelines that keep your funnel full." },
-      { title: "Social Media Marketing", text: "Content engineered to build reach and trust." },
-      { title: "App Development", text: "Mobile experiences your users will love." },
+      { title: "Digital Marketing / SEO", text: "Search and social strategies engineered to grow reach." },
+      { title: "Custom Software Development", text: "Tailored systems built around how your business works." },
+      { title: "E-commerce Solutions", text: "Storefronts and flows designed to turn visitors into buyers." },
+      { title: "Gen AI and ML Solutions", text: "Intelligent models that automate, predict, and scale." },
+      { title: "Ads Management", text: "Paid campaigns tuned for maximum return on every spend." },
     ],
   },
   {
@@ -725,9 +1162,82 @@ const sphereData = [
   },
 ];
 
+function DNAHelix({ journey, mouseYRef }) {
+  const ref = useRef();
+  const fadeRef = useRef(1);
+
+  useFrame((state, delta) => {
+    if (!ref.current) return;
+    const target = journey ? DNA_OFFSET + DNA_JOURNEY_SHIFT : DNA_OFFSET;
+    ref.current.position.x = THREE.MathUtils.lerp(ref.current.position.x, target, 1 - Math.exp(-delta * 2.2));
+
+    let opacity = 1;
+    if (journey) {
+      const py = mouseYRef.current || 0;
+      const hoverReveal = THREE.MathUtils.clamp((Math.abs(py) - 0.5) / 0.35, 0, 1);
+      const walkBase = THREE.MathUtils.clamp((JOURNEY_CAM_X - state.camera.position.x) / 12, 0, 1);
+      opacity = THREE.MathUtils.clamp(Math.max(walkBase, hoverReveal), 0, 1);
+    }
+    fadeRef.current = THREE.MathUtils.lerp(fadeRef.current, opacity, 1 - Math.exp(-delta * 6));
+
+    ref.current.traverse((o) => {
+      if (o.material) {
+        if (o.userData.baseOp === undefined) o.userData.baseOp = o.material.opacity;
+        o.material.opacity = o.userData.baseOp * fadeRef.current;
+      }
+    });
+  });
+
+  return (
+    <group ref={ref} position={[DNA_OFFSET, 0, 0]}>
+      <ActiveDNA length={DNA_LENGTH} breaks={[
+        { start: 0.1, end: 0.25 }
+      ]} />
+    </group>
+  );
+}
+
 export default function App() {
   const [journey, setJourney] = useState(null);
+  const [selectedOption, setSelectedOption] = useState(null);
   const adaptProgressRef = useRef(0);
+  const mouseXRef = useRef(0);
+  const mouseYRef = useRef(0);
+  const suppressDocClickRef = useRef(false);
+
+  useEffect(() => {
+    if (!journey) setSelectedOption(null);
+  }, [journey]);
+
+  useEffect(() => {
+    if (!selectedOption) return;
+    const onDocClick = () => {
+      if (suppressDocClickRef.current) {
+        suppressDocClickRef.current = false;
+        return;
+      }
+      setSelectedOption(null);
+    };
+    document.addEventListener('click', onDocClick);
+    return () => document.removeEventListener('click', onDocClick);
+  }, [selectedOption]);
+
+  useEffect(() => {
+    const onMove = (e) => {
+      mouseXRef.current = (e.clientX / window.innerWidth) * 2 - 1;
+      mouseYRef.current = (e.clientY / window.innerHeight) * 2 - 1;
+    };
+    const onLeave = () => {
+      mouseXRef.current = 0;
+      mouseYRef.current = 0;
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseleave', onLeave);
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseleave', onLeave);
+    };
+  }, []);
   return (
     <div style={{ width: '100vw', height: '100vh', backgroundColor: '#020204', position: 'relative' }}>
       <Canvas camera={{ position: [-(CAMERA_RANGE / 2), 0, 18], fov: 45 }} dpr={[1, 1.25]}>
@@ -737,18 +1247,23 @@ export default function App() {
 
           <ScrollControls pages={TOTAL_PAGES} horizontal damping={0.15} enabled={!journey} style={{ zIndex: 3 }}>
             <Galaxy length={DNA_LENGTH * 1.5} />
-            <group position={[DNA_OFFSET, 0, 0]}>
-              <ActiveDNA length={DNA_LENGTH} breaks={[
-                { start: 0.1, end: 0.25 }
-              ]} />
-            </group>
-            <CameraTracker length={CAMERA_RANGE} journey={journey} />
+            <DNAHelix journey={journey} mouseYRef={mouseYRef} />
+            <CameraTracker length={CAMERA_RANGE} journey={journey} mouseXRef={mouseXRef} mouseYRef={mouseYRef} />
 
             {sphereData.map((s, i) => (
-              <OrbitingCard key={i} title={s.title} subtitle={s.subtitle} color={s.color} items={s.items} stairIndex={s.stairIndex} totalCards={4} journey={journey} onSelect={() => setJourney({ card: i })} />
+              <OrbitingCard key={i} title={s.title} subtitle={s.subtitle} color={s.color} items={s.items} stairIndex={s.stairIndex} totalCards={4} journey={journey} onSelect={() => setJourney({ card: i })} selectedIndex={selectedOption && selectedOption.card === i ? selectedOption.option : null} onOptionClick={(opt) => { suppressDocClickRef.current = true; setSelectedOption((prev) => (prev ? null : { card: i, option: opt })); }} />
             ))}
 
-            <Scroll html style={{ width: '100vw', height: '100vh' }}>
+            {selectedOption && sphereData[selectedOption.card] && (
+              <DetailPanel
+                key={selectedOption.card + '-' + selectedOption.option}
+                item={sphereData[selectedOption.card].items[selectedOption.option]}
+                category={sphereData[selectedOption.card].title}
+                color={sphereData[selectedOption.card].color}
+              />
+            )}
+
+            <Scroll html style={{ width: '100vw', height: '100vh', pointerEvents: journey ? 'none' : 'auto' }}>
 
               {/* 1. TITLE */}
               <ScrollSection
@@ -836,7 +1351,7 @@ export default function App() {
           </ScrollControls>
       </Canvas>
       {journey && (
-        <button className="journey-back" onClick={() => setJourney(null)}>Back</button>
+        <button className="journey-back" onClick={() => { setSelectedOption(null); setJourney(null); }}>Back</button>
       )}
     </div>
   );
