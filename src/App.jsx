@@ -718,15 +718,27 @@ export default function App() {
                     <ParticleBg color="255, 140, 140" count={360} linkDistance={95} />
                     <AnimateWords>
                       <div className="image-block">
-                        <span className="image-label">Adapt</span>
+                        <div className="image-block-head">
+                          <span className="image-index">01</span>
+                          <span className="image-label">Adapt</span>
+                        </div>
+                        <span className="image-rule" />
                         <p className="image-desc">We watch the market closely and shift<br />before the wave even begins to move.</p>
                       </div>
                       <div className="image-block">
-                        <span className="image-label">Transform</span>
+                        <div className="image-block-head">
+                          <span className="image-index">02</span>
+                          <span className="image-label">Transform</span>
+                        </div>
+                        <span className="image-rule" />
                         <p className="image-desc">We rebuild your presence into something<br />sharper, faster, and built to win.</p>
                       </div>
                       <div className="image-block">
-                        <span className="image-label">Dominate</span>
+                        <div className="image-block-head">
+                          <span className="image-index">03</span>
+                          <span className="image-label">Dominate</span>
+                        </div>
+                        <span className="image-rule" />
                         <p className="image-desc">Consistent systems and creative edge<br />put you ahead and keep you there.</p>
                       </div>
                       <p className="image-caption">Where evolution meets innovation</p>
