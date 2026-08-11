@@ -1190,9 +1190,7 @@ function DNAHelix({ journey, mouseYRef }) {
 
   return (
     <group ref={ref} position={[DNA_OFFSET, 0, 0]}>
-      <ActiveDNA length={DNA_LENGTH} breaks={[
-        { start: 0.1, end: 0.25 }
-      ]} />
+      <ActiveDNA length={DNA_LENGTH} />
     </group>
   );
 }
