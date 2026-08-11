@@ -8,22 +8,27 @@ const LAYERS = [
 
 const SPRITE_SIZE = 64;
 
-function makeSprite(color, layer) {
+const smooth = (a, b, x) => {
+    const u = Math.max(0, Math.min(1, (x - a) / (b - a)));
+    return u * u * (3 - 2 * u);
+};
+
+function makeSprite(color, layer, boost = 1) {
     const canvas = document.createElement('canvas');
     canvas.width = SPRITE_SIZE;
     canvas.height = SPRITE_SIZE;
     const ctx = canvas.getContext('2d');
     const c = SPRITE_SIZE / 2;
     const grad = ctx.createRadialGradient(c, c, 0, c, c, c);
-    grad.addColorStop(layer.core, `rgba(${color}, ${layer.alpha})`);
-    grad.addColorStop(layer.midStop, `rgba(${color}, ${layer.midAlpha})`);
+    grad.addColorStop(layer.core, `rgba(${color}, ${Math.min(1, layer.alpha * boost)})`);
+    grad.addColorStop(layer.midStop, `rgba(${color}, ${Math.min(1, layer.midAlpha * boost)})`);
     grad.addColorStop(1, `rgba(${color}, 0)`);
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, SPRITE_SIZE, SPRITE_SIZE);
     return canvas;
 }
 
-export default function ParticleBg({ color = '136, 204, 255', count = 60, linkDistance = 130 }) {
+export default function ParticleBg({ color = '136, 204, 255', count = 60, linkDistance = 130, progressRef = null }) {
     const canvasRef = useRef();
     const mouse = useRef({ x: -9999, y: -9999 });
 
@@ -36,6 +41,9 @@ export default function ParticleBg({ color = '136, 204, 255', count = 60, linkDi
         let visible = true;
 
         const sprites = LAYERS.map((layer) => makeSprite(color, layer));
+        const hotSprites = LAYERS.map((layer) => makeSprite(color, layer, 1.8));
+
+        const activeCount = () => (window.innerWidth < 700 ? Math.max(30, Math.floor(count * 0.5)) : count);
 
         const onMove = (e) => {
             mouse.current.x = e.clientX;
@@ -66,7 +74,8 @@ export default function ParticleBg({ color = '136, 204, 255', count = 60, linkDi
             canvas.style.height = `${h}px`;
 
             particles = [];
-            for (let i = 0; i < count; i++) {
+            const n = activeCount();
+            for (let i = 0; i < n; i++) {
                 const roll = Math.random();
                 const layer = roll < 0.28 ? 0 : roll < 0.68 ? 1 : 2;
                 const x0 = Math.random() * w;
@@ -76,10 +85,13 @@ export default function ParticleBg({ color = '136, 204, 255', count = 60, linkDi
                     y: y0,
                     homeX: x0,
                     homeY: y0,
+                    tx: x0,
+                    ty: y0,
                     vx: (Math.random() - 0.5) * 0.4,
                     vy: (Math.random() - 0.5) * 0.4,
                     r: 1 + Math.random() * 2,
                     layer,
+                    hot: false,
                 });
             }
         };
@@ -90,47 +102,56 @@ export default function ParticleBg({ color = '136, 204, 255', count = 60, linkDi
                 return;
             }
 
-            ctx.clearRect(0, 0, w, h);
+            const prog = progressRef ? progressRef.current || 0 : 0;
+            const wSpread = 1 - smooth(0.12, 0.45, prog);
+            const wDense = smooth(0.55, 0.88, prog);
+            const wConnect = Math.max(0, 1 - wSpread - wDense);
+            const k = 1 + 0.5 * wSpread - 0.34 * wDense;
+            const linkD = linkDistance * (1 + 0.3 * wConnect - 0.12 * wDense);
+            const cx = w / 2;
+            const cy = h / 2;
 
-            for (const p of particles) {
-                p.x += p.vx;
-                p.y += p.vy;
-                if (p.x < 0 || p.x > w) p.vx *= -1;
-                if (p.y < 0 || p.y > h) p.vy *= -1;
-            }
+            ctx.clearRect(0, 0, w, h);
 
             const rect = canvas.parentElement.getBoundingClientRect();
             const mx = mouse.current.x - rect.left;
             const my = mouse.current.y - rect.top;
             const over = mx >= -40 && my >= -40 && mx <= rect.width + 40 && my <= rect.height + 40;
-            if (over) {
-                const R = 120;
-                for (const p of particles) {
+
+            for (const p of particles) {
+                const dxc = p.homeX - cx;
+                const dyc = p.homeY - cy;
+                p.tx = cx + dxc * k;
+                p.ty = cy + dyc * k;
+
+                if (over) {
                     const dx = p.x - mx;
                     const dy = p.y - my;
                     const d2 = dx * dx + dy * dy;
-                    if (d2 < R * R && d2 > 0.01) {
+                    if (d2 < 130 * 130 && d2 > 0.01) {
                         const d = Math.sqrt(d2);
-                        const force = (1 - d / R) * 0.18;
+                        const force = (1 - d / 130) * 0.16;
                         p.vx += (dx / d) * force;
                         p.vy += (dy / d) * force;
+                        p.hot = d < 110;
                     }
                 }
-            }
-            for (const p of particles) {
-                p.vx += (p.homeX - p.x) * 0.015;
-                p.vy += (p.homeY - p.y) * 0.015;
-                p.vx *= 0.97;
-                p.vy *= 0.97;
+                p.vx += (p.tx - p.x) * 0.02;
+                p.vy += (p.ty - p.y) * 0.02;
+                p.vx *= 0.96;
+                p.vy *= 0.96;
                 const sp = Math.hypot(p.vx, p.vy);
                 const maxS = 0.9;
                 if (sp > maxS) {
                     p.vx = (p.vx / sp) * maxS;
                     p.vy = (p.vy / sp) * maxS;
                 }
+                p.x += p.vx;
+                p.y += p.vy;
             }
 
-            ctx.strokeStyle = `rgba(${color}, 0.12)`;
+            const lineAlpha = 0.1 + 0.08 * wConnect + (over ? 0.04 : 0);
+            ctx.strokeStyle = `rgba(${color}, ${lineAlpha})`;
             ctx.lineWidth = 1;
             ctx.beginPath();
             for (let i = 0; i < particles.length; i++) {
@@ -139,7 +160,7 @@ export default function ParticleBg({ color = '136, 204, 255', count = 60, linkDi
                     const b = particles[j];
                     const dx = a.x - b.x;
                     const dy = a.y - b.y;
-                    if (dx * dx + dy * dy < linkDistance * linkDistance) {
+                    if (dx * dx + dy * dy < linkD * linkD) {
                         ctx.moveTo(a.x, a.y);
                         ctx.lineTo(b.x, b.y);
                     }
@@ -149,11 +170,13 @@ export default function ParticleBg({ color = '136, 204, 255', count = 60, linkDi
 
             for (const p of particles) {
                 const lay = LAYERS[p.layer];
-                const sprite = sprites[p.layer];
-                const radius = p.r * lay.radiusMul;
+                const sprite = p.hot ? hotSprites[p.layer] : sprites[p.layer];
+                const radius = p.r * lay.radiusMul * (p.hot ? 1.35 : 1);
                 const size = radius * 2;
                 ctx.drawImage(sprite, p.x - radius, p.y - radius, size, size);
             }
+
+            for (const p of particles) p.hot = false;
 
             raf = requestAnimationFrame(tick);
         };
@@ -168,7 +191,7 @@ export default function ParticleBg({ color = '136, 204, 255', count = 60, linkDi
             window.removeEventListener('mousemove', onMove);
             window.removeEventListener('resize', resize);
         };
-    }, [color, count, linkDistance]);
+    }, [color, count, linkDistance, progressRef]);
 
     return (
         <canvas
