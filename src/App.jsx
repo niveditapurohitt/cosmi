@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+﻿import React, { useRef, useState, useEffect } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { ScrollControls, Scroll, useScroll } from '@react-three/drei';
 import * as THREE from 'three';
@@ -23,6 +23,35 @@ function wrapText(ctx, text, maxWidth) {
   return lines;
 }
 
+function splitTitleLines(title) {
+  const words = String(title || '').trim().split(/\s+/).filter(Boolean);
+  if (words.length <= 1) return [String(title || '')];
+  if (words.length === 2) return words;
+  const firstCount = Math.ceil(words.length / 2);
+  return [words.slice(0, firstCount).join(' '), words.slice(firstCount).join(' ')];
+}
+
+function makeParticlePositions(seed, count, halfW, halfH, halfD) {
+  let s = ((seed + 1) * 2654435761) >>> 0;
+  const rand = () => {
+    s = (1664525 * s + 1013904223) >>> 0;
+    return s / 4294967296;
+  };
+
+  const arr = new Float32Array(count * 3);
+  for (let i = 0; i < count; i++) {
+    arr[i * 3 + 0] = (rand() * 2 - 1) * halfW * 0.92;
+    arr[i * 3 + 1] = (rand() * 2 - 1) * halfH * 0.82;
+    arr[i * 3 + 2] = (rand() * 2 - 1) * halfD * 0.72;
+  }
+  return arr;
+}
+
+function resolveAccent(accent, index = 0) {
+  if (Array.isArray(accent)) return accent[index % accent.length];
+  return accent;
+}
+
 function makeCardTexture(title, subtitle, accent, items = null) {
   const canvas = document.createElement('canvas');
   canvas.width = 512;
@@ -34,7 +63,7 @@ function makeCardTexture(title, subtitle, accent, items = null) {
   const y = 4;
   const w = 504;
   const h = 348;
-  const r = 20;
+  const r = 30;
 
   const path = () => {
     ctx.beginPath();
@@ -101,17 +130,9 @@ function makeCardTexture(title, subtitle, accent, items = null) {
   ctx.textBaseline = 'middle';
 
   if (items) {
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.16)';
-    ctx.font = '500 16px "Fredoka"';
-    ctx.fillText('C O S M I   C H A M E L E O N', 256, 32);
-
     ctx.fillStyle = '#ffffff';
-    ctx.font = '500 32px "Fredoka"';
+    ctx.font = '500 34px "Fredoka"';
     ctx.fillText(title.toUpperCase(), 256, 66);
-
-    ctx.fillStyle = `rgba(${accent}, 0.9)`;
-    ctx.font = '500 16px "Fredoka"';
-    ctx.fillText(subtitle.toUpperCase(), 256, 94);
 
     const colX = [28, 258];
     const rowY = [112, 206];
@@ -147,16 +168,6 @@ function makeCardTexture(title, subtitle, accent, items = null) {
       ctx.font = '500 15px "Fredoka"';
       ctx.fillText(it.title.toUpperCase(), cx + 14, cy + 12);
 
-      ctx.fillStyle = `rgba(${accent}, 0.8)`;
-      ctx.fillRect(cx + 14, cy + 32, 26, 2);
-
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.62)';
-      ctx.font = '400 11px "Fredoka"';
-      const tlines = wrapText(ctx, it.text, cw - 28);
-      tlines.slice(0, 3).forEach((line, j) => {
-        ctx.fillText(line, cx + 14, cy + 42 + j * 14);
-      });
-
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
     }
@@ -165,17 +176,9 @@ function makeCardTexture(title, subtitle, accent, items = null) {
     ctx.font = '500 13px "Fredoka"';
     ctx.fillText('CLICK TO CLOSE', 256, 338);
   } else {
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.16)';
-    ctx.font = '500 22px "Fredoka"';
-    ctx.fillText('C O S M I   C H A M E L E O N', 256, 38);
-
     ctx.fillStyle = '#ffffff';
-    ctx.font = '500 58px "Fredoka"';
+    ctx.font = '500 64px "Fredoka"';
     ctx.fillText(title.toUpperCase(), 256, 152);
-
-    ctx.fillStyle = `rgba(${accent}, 0.9)`;
-    ctx.font = '500 34px "Fredoka"';
-    ctx.fillText(subtitle.toUpperCase(), 256, 222);
   }
 
   const texture = new THREE.CanvasTexture(canvas);
@@ -195,7 +198,7 @@ function makeOptionTexture(title, text, accent, hover) {
   const pts = [];
   for (let i = 0; i < 22; i++) pts.push({ x: randN(12, 628), y: randN(12, 188) });
   ctx.save();
-  ctx.strokeStyle = `rgba(${accent}, ${hover ? 0.32 : 0.2})`;
+  ctx.strokeStyle = `rgba(${accent}, ${hover ? 0.34 : 0.18})`;
   ctx.lineWidth = 1;
   for (let i = 0; i < pts.length; i++) {
     for (let j = i + 1; j < pts.length; j++) {
@@ -209,7 +212,7 @@ function makeOptionTexture(title, text, accent, hover) {
       }
     }
   }
-  ctx.fillStyle = `rgba(${accent}, ${hover ? 0.9 : 0.6})`;
+  ctx.fillStyle = `rgba(${accent}, ${hover ? 0.88 : 0.58})`;
   for (const p of pts) {
     ctx.beginPath();
     ctx.arc(p.x, p.y, 2.2, 0, Math.PI * 2);
@@ -218,9 +221,9 @@ function makeOptionTexture(title, text, accent, hover) {
   ctx.restore();
 
   // subtle accent border
-  ctx.strokeStyle = `rgba(${accent}, ${hover ? 0.55 : 0.4})`;
+  ctx.strokeStyle = `rgba(${accent}, ${hover ? 0.62 : 0.42})`;
   ctx.lineWidth = 1.5;
-  const r = 18;
+  const r = 28;
   const rrect = () => {
     ctx.beginPath();
     ctx.moveTo(20 + r, 20);
@@ -243,10 +246,10 @@ function makeOptionTexture(title, text, accent, hover) {
     size -= 1;
     ctx.font = `500 ${size}px "Fredoka"`;
   }
-  const titleY = hover ? 70 : 100;
+  const titleY = hover ? 68 : 96;
   ctx.save();
-  ctx.shadowColor = 'rgba(0,0,0,0.6)';
-  ctx.shadowBlur = 10;
+  ctx.shadowColor = 'rgba(0,0,0,0.65)';
+  ctx.shadowBlur = 12;
   ctx.fillStyle = '#ffffff';
   ctx.fillText(title, 24, titleY);
   ctx.restore();
@@ -256,7 +259,7 @@ function makeOptionTexture(title, text, accent, hover) {
     ctx.fillStyle = `rgba(${accent}, 0.9)`;
     ctx.fillRect(24, 100, 46, 3);
     ctx.font = '400 18px "Fredoka"';
-    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
     const lines = wrapText(ctx, text, maxW);
     lines.slice(0, 2).forEach((line, j) => {
       ctx.fillText(line, 24, 118 + j * 24);
@@ -266,6 +269,240 @@ function makeOptionTexture(title, text, accent, hover) {
   const texture = new THREE.CanvasTexture(canvas);
   texture.needsUpdate = true;
   return texture;
+}
+
+function makeCardStyleTexture(title, text, accent, hover) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 356;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, 512, 356);
+
+  const x = 4;
+  const y = 4;
+  const w = 504;
+  const h = 348;
+  const r = 30;
+
+  const path = () => {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  };
+
+  path();
+  const bg = ctx.createLinearGradient(0, 0, 0, 356);
+  bg.addColorStop(0, 'rgba(18, 26, 42, 0.96)');
+  bg.addColorStop(0.55, 'rgba(11, 16, 27, 0.98)');
+  bg.addColorStop(1, 'rgba(5, 7, 12, 0.98)');
+  ctx.fillStyle = bg;
+  ctx.fill();
+
+  ctx.save();
+  path();
+  ctx.clip();
+  const sheen = ctx.createLinearGradient(24, 0, 488, 356);
+  sheen.addColorStop(0, 'rgba(255, 255, 255, 0.06)');
+  sheen.addColorStop(0.35, 'rgba(255, 255, 255, 0)');
+  sheen.addColorStop(0.72, `rgba(${accent}, 0.05)`);
+  sheen.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = sheen;
+  ctx.fillRect(x, y, w, h);
+  ctx.restore();
+
+  ctx.save();
+  path();
+  ctx.clip();
+  const randN = (a, b) => a + Math.random() * (b - a);
+  const net = [];
+  for (let i = 0; i < 34; i++) net.push({ x: randN(18, 494), y: randN(18, 338) });
+  ctx.strokeStyle = `rgba(${accent}, ${hover ? 0.24 : 0.14})`;
+  ctx.lineWidth = 1;
+  for (let i = 0; i < net.length; i++) {
+    for (let j = i + 1; j < net.length; j++) {
+      const dx = net[i].x - net[j].x;
+      const dy = net[i].y - net[j].y;
+      if (dx * dx + dy * dy < 12100) {
+        ctx.beginPath();
+        ctx.moveTo(net[i].x, net[i].y);
+        ctx.lineTo(net[j].x, net[j].y);
+        ctx.stroke();
+      }
+    }
+  }
+  ctx.fillStyle = `rgba(${accent}, ${hover ? 0.82 : 0.55})`;
+  for (let i = 0; i < net.length; i++) {
+    ctx.beginPath();
+    ctx.arc(net[i].x, net[i].y, 2.0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+
+  ctx.strokeStyle = `rgba(${accent}, ${hover ? 0.75 : 0.46})`;
+  ctx.lineWidth = 2.25;
+  ctx.stroke();
+
+  path();
+  ctx.save();
+  ctx.clip();
+  ctx.fillStyle = `rgba(${accent}, ${hover ? 0.96 : 0.82})`;
+  ctx.fillRect(x, y, w, 3);
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.07)';
+  ctx.fillRect(x + 18, y + 10, w - 36, 1);
+  ctx.fillStyle = `rgba(${accent}, ${hover ? 0.22 : 0.14})`;
+  ctx.fillRect(x, y + h - 4, w, 4);
+  ctx.restore();
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.needsUpdate = true;
+  return texture;
+}
+
+function makeCardShellTexture(accent, hover) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 356;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, 512, 356);
+
+  const x = 4;
+  const y = 4;
+  const w = 504;
+  const h = 348;
+  const r = 30;
+
+  const path = () => {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  };
+
+  path();
+  const bg = ctx.createLinearGradient(0, 0, 0, 356);
+  bg.addColorStop(0, 'rgba(18, 26, 42, 0.96)');
+  bg.addColorStop(0.55, 'rgba(11, 16, 27, 0.98)');
+  bg.addColorStop(1, 'rgba(5, 7, 12, 0.98)');
+  ctx.fillStyle = bg;
+  ctx.fill();
+
+  ctx.save();
+  path();
+  ctx.clip();
+  const sheen = ctx.createLinearGradient(24, 0, 488, 356);
+  sheen.addColorStop(0, 'rgba(255, 255, 255, 0.06)');
+  sheen.addColorStop(0.35, 'rgba(255, 255, 255, 0)');
+  sheen.addColorStop(0.72, `rgba(${accent}, 0.05)`);
+  sheen.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = sheen;
+  ctx.fillRect(x, y, w, h);
+  ctx.restore();
+
+  ctx.save();
+  path();
+  ctx.clip();
+  const randN = (a, b) => a + Math.random() * (b - a);
+  const net = [];
+  for (let i = 0; i < 34; i++) net.push({ x: randN(18, 494), y: randN(18, 338) });
+  ctx.strokeStyle = `rgba(${accent}, ${hover ? 0.24 : 0.14})`;
+  ctx.lineWidth = 1;
+  for (let i = 0; i < net.length; i++) {
+    for (let j = i + 1; j < net.length; j++) {
+      const dx = net[i].x - net[j].x;
+      const dy = net[i].y - net[j].y;
+      if (dx * dx + dy * dy < 12100) {
+        ctx.beginPath();
+        ctx.moveTo(net[i].x, net[i].y);
+        ctx.lineTo(net[j].x, net[j].y);
+        ctx.stroke();
+      }
+    }
+  }
+  ctx.fillStyle = `rgba(${accent}, ${hover ? 0.82 : 0.55})`;
+  for (let i = 0; i < net.length; i++) {
+    ctx.beginPath();
+    ctx.arc(net[i].x, net[i].y, 2.0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+
+  ctx.strokeStyle = `rgba(${accent}, ${hover ? 0.75 : 0.46})`;
+  ctx.lineWidth = 2.25;
+  ctx.stroke();
+
+  path();
+  ctx.save();
+  ctx.clip();
+  ctx.fillStyle = `rgba(${accent}, ${hover ? 0.96 : 0.82})`;
+  ctx.fillRect(x, y, w, 3);
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.07)';
+  ctx.fillRect(x + 18, y + 10, w - 36, 1);
+  ctx.fillStyle = `rgba(${accent}, ${hover ? 0.22 : 0.14})`;
+  ctx.fillRect(x, y + h - 4, w, 4);
+  ctx.restore();
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.needsUpdate = true;
+  return texture;
+}
+
+const cardShellTexCache = new Map();
+
+function useCardShellTextures(accent) {
+  const [texs, setTexs] = useState({ normal: null, hover: null });
+
+  useEffect(() => {
+    let cancelled = false;
+    const draw = () => {
+      if (cancelled) return;
+      let entry = cardShellTexCache.get(accent);
+      if (!entry) {
+        entry = {
+          normal: makeCardShellTexture(accent, false),
+          hover: makeCardShellTexture(accent, true),
+        };
+        cardShellTexCache.set(accent, entry);
+      }
+      setTexs(entry);
+    };
+    Promise.all([
+      document.fonts.load('500 16px "Fredoka"'),
+      document.fonts.ready,
+    ]).then(draw).catch(draw);
+    return () => { cancelled = true; };
+  }, [accent]);
+
+  return texs;
+}
+
+function useFloatingTitleTextures(title, subtitle, accent) {
+  const [texs, setTexs] = useState({ normal: null, hover: null });
+
+  useEffect(() => {
+    let cancelled = false;
+    const draw = () => {
+      if (cancelled) return;
+      setTexs({
+        normal: makeCardFloatingTextTexture(title, subtitle, accent, false),
+        hover: makeCardFloatingTextTexture(title, subtitle, accent, true),
+      });
+    };
+    Promise.all([
+      document.fonts.load('500 48px "Fredoka"'),
+      document.fonts.load('400 18px "Fredoka"'),
+      document.fonts.ready,
+    ]).then(draw).catch(draw);
+    return () => { cancelled = true; };
+  }, [title, subtitle, accent]);
+
+  return texs;
 }
 
 function CameraTracker({ length, journey, mouseXRef, mouseYRef }) {
@@ -304,11 +541,24 @@ function CameraTracker({ length, journey, mouseXRef, mouseYRef }) {
       state.camera.position.x = THREE.MathUtils.lerp(state.camera.position.x, x, 0.05);
       const zOffset = Math.sin(scroll.offset * Math.PI) * 4;
       state.camera.position.z = THREE.MathUtils.lerp(state.camera.position.z, 18 - zOffset, 0.05);
-      state.camera.position.y = THREE.MathUtils.lerp(state.camera.position.y, -py * 1.35, k);
-      state.camera.lookAt(x + px * 1.5, -py * 0.8, 0);
+      state.camera.position.y = THREE.MathUtils.lerp(state.camera.position.y, 0, k);
+      state.camera.lookAt(x, 0, 0);
     }
   });
   return null;
+}
+
+function HoverParallax({ mouseXRef, mouseYRef, children }) {
+  const ref = useRef();
+  useFrame((state, delta) => {
+    if (!ref.current) return;
+    const k = 1 - Math.exp(-delta * 4);
+    const px = mouseXRef.current || 0;
+    const py = mouseYRef.current || 0;
+    ref.current.position.x = THREE.MathUtils.lerp(ref.current.position.x, px * 1.4, k);
+    ref.current.position.y = THREE.MathUtils.lerp(ref.current.position.y, py * 1.2, k);
+  });
+  return <group ref={ref}>{children}</group>;
 }
 
 function AnimateWords({ children }) {
@@ -335,6 +585,50 @@ function AnimateWords({ children }) {
   );
 }
 
+function LaunchEvolutionStage({ scrollStart, scrollEnd }) {
+  const scroll = useScroll();
+  const particlesRef = useRef();
+  const copyRef = useRef();
+
+  useFrame(() => {
+    const offset = scroll.offset;
+    const progress = THREE.MathUtils.clamp((offset - scrollStart) / Math.max(0.0001, scrollEnd - scrollStart), 0, 1);
+    const titleFade = smoothstep(0.08, 0.42, progress);
+    const titleSlide = (1 - smoothstep(0.08, 0.42, progress)) * 44;
+    const titleShift = (1 - smoothstep(0.12, 0.42, progress)) * 26;
+    const particleFade = smoothstep(0.70, 0.90, offset);
+    if (particlesRef.current) {
+      particlesRef.current.style.opacity = particleFade.toFixed(3);
+    }
+    if (copyRef.current) {
+      copyRef.current.style.opacity = titleFade.toFixed(3);
+      copyRef.current.style.transform = `translate3d(${titleShift.toFixed(2)}px, ${titleSlide.toFixed(2)}px, 0)`;
+    }
+  });
+
+  return (
+    <div className="launch-stage">
+      <div ref={particlesRef} className="launch-particles">
+        <ParticleBg color="0, 229, 255" count={360} linkDistance={95} />
+      </div>
+      <div ref={copyRef} className="launch-copy-shell">
+        <div className="launch-title-stack">
+          <div className="image-block">
+            <span className="image-label">Launch</span>
+          </div>
+          <div className="image-block">
+            <span className="image-label">Your</span>
+          </div>
+          <div className="image-block">
+            <span className="image-label">Evolution</span>
+          </div>
+          <p className="image-caption">The future starts here</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ScrollSection({ children, scrollStart, scrollEnd, persist = false, style = {} }) {
   const ref = useRef();
   const scroll = useScroll();
@@ -344,9 +638,13 @@ function ScrollSection({ children, scrollStart, scrollEnd, persist = false, styl
     const offset = scroll.offset;
     if (offset >= scrollStart) {
       if (persist) {
-        const progress = (offset - scrollStart) / Math.max(0.01, scrollEnd - scrollStart);
-        const fadeIn = Math.min(1, progress / 0.15);
-        ref.current.style.opacity = fadeIn;
+        if (offset <= scrollStart) {
+          ref.current.style.opacity = 1;
+        } else {
+          const progress = (offset - scrollStart) / Math.max(0.01, scrollEnd - scrollStart);
+          const fadeIn = Math.min(1, progress / 0.15);
+          ref.current.style.opacity = fadeIn;
+        }
       } else if (offset <= scrollEnd) {
         const progress = (offset - scrollStart) / (scrollEnd - scrollStart);
         let opacity = 1;
@@ -364,6 +662,28 @@ function ScrollSection({ children, scrollStart, scrollEnd, persist = false, styl
   return (
     <div ref={ref} style={{ ...style, opacity: 0 }}>
       {children}
+    </div>
+  );
+}
+
+function HeroLogoSection() {
+  const ref = useRef();
+  const scroll = useScroll();
+
+  useFrame(() => {
+    if (!ref.current) return;
+    const offset = scroll.offset;
+    const fade = 1 - THREE.MathUtils.clamp(smoothstep(0.03, 0.16, offset), 0, 1);
+    ref.current.style.opacity = fade.toFixed(3);
+  });
+
+  return (
+    <div
+      ref={ref}
+      className="hero-logo-section"
+      style={{ opacity: 1 }}
+    >
+      <img className="hero-logo" src="/hero-logo.png" alt="Cosmichameleon" />
     </div>
   );
 }
@@ -395,9 +715,9 @@ function AdaptStage({ scrollStart, scrollEnd, progressRef, blocks }) {
     }
     if (b1.current) {
       const op = smoothstep(0.1, 0.28, t) * (1 - smoothstep(0.8, 0.95, t));
-      const sc = 0.82 + 0.2 * smoothstep(0.1, 0.32, t);
+      const ty = (1 - smoothstep(0.1, 0.3, t)) * 30;
       b1.current.style.opacity = op.toFixed(3);
-      b1.current.style.transform = `scale(${sc.toFixed(4)})`;
+      b1.current.style.transform = `translateY(${ty.toFixed(2)}px)`;
     }
     if (b2.current) {
       const op = smoothstep(0.42, 0.58, t);
@@ -419,7 +739,6 @@ function AdaptStage({ scrollStart, scrollEnd, progressRef, blocks }) {
       <div className="adapt-blocks">
         {blocks.map((b, i) => (
           <div className="image-block" key={b.word} ref={blockRefs[i]} style={{ opacity: 0 }}>
-            <span className="image-index">{b.num}</span>
             <div className="image-block-main">
               <span className="image-label">{b.word}</span>
               <p className="image-desc">{b.desc}</p>
@@ -506,6 +825,199 @@ function useOptionTexture(item, accent, hover) {
     ]).then(draw).catch(draw);
     return () => { cancelled = true; };
   }, [item, accent, hover]);
+
+  return tex;
+}
+
+const cardStyleTexCache = new WeakMap();
+const cardTextTexCache = new WeakMap();
+const cardTextBoostTexCache = new WeakMap();
+
+function useCardStyleTextures(items, accent) {
+  const [texs, setTexs] = useState({ normal: [], hover: [] });
+  const accentKey = Array.isArray(accent) ? accent.join('|') : accent;
+
+  useEffect(() => {
+    let cancelled = false;
+    const draw = () => {
+      if (cancelled) return;
+      let byAccent = cardStyleTexCache.get(items);
+      if (!byAccent) {
+        byAccent = new Map();
+        cardStyleTexCache.set(items, byAccent);
+      }
+      let entry = byAccent.get(accentKey);
+      if (!entry) {
+        const accentResolver = Array.isArray(accent) ? accent : null;
+        entry = {
+          normal: items.map((it, i) => makeCardStyleTexture(it.title, it.text, resolveAccent(accentResolver || accent, i), false)),
+          hover: items.map((it, i) => makeCardStyleTexture(it.title, it.text, resolveAccent(accentResolver || accent, i), true)),
+        };
+        byAccent.set(accentKey, entry);
+      }
+      setTexs(entry);
+    };
+    Promise.all([
+      document.fonts.load('500 16px "Fredoka"'),
+      document.fonts.load('400 20px "Fredoka"'),
+      document.fonts.ready,
+    ]).then(draw).catch(draw);
+    return () => { cancelled = true; };
+  }, [items, accentKey]);
+
+  return texs;
+}
+
+function makeCardFloatingTextTexture(title, text, accent, hover, boost = false) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 576;
+  canvas.height = 420;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, 576, 420);
+
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  const glow = ctx.createRadialGradient(288, 110, 0, 288, 110, 190);
+  glow.addColorStop(0, `rgba(${accent}, ${hover ? 0.18 : 0.1})`);
+  glow.addColorStop(0.55, `rgba(${accent}, ${hover ? 0.08 : 0.04})`);
+  glow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, 576, 420);
+
+  ctx.fillStyle = `rgba(${accent}, ${hover ? 0.92 : 0.82})`;
+  ctx.fillRect(194, 56, 188, 2);
+
+  const titleLines = splitTitleLines(title);
+  let size = boost ? 56 : 46;
+  ctx.font = `500 ${size}px "Fredoka"`;
+  const titleMaxWidth = boost ? 500 : 470;
+  while (titleLines.some((line) => ctx.measureText(line).width > titleMaxWidth) && size > (boost ? 24 : 20)) {
+    size -= 1;
+    ctx.font = `500 ${size}px "Fredoka"`;
+  }
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,0,0,0.8)';
+  ctx.shadowBlur = 20;
+  ctx.fillStyle = '#ffffff';
+  const titleStartY = boost ? 132 : 130;
+  const titleGap = boost ? 60 : 46;
+  titleLines.slice(0, 2).forEach((line, i) => ctx.fillText(line, 288, titleStartY + i * titleGap));
+  ctx.restore();
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.needsUpdate = true;
+  return texture;
+}
+
+function useCardFloatingTextTextures(items, accent, boost = false) {
+  const [texs, setTexs] = useState({ normal: [], hover: [] });
+  const accentKey = Array.isArray(accent) ? accent.join('|') : accent;
+
+  useEffect(() => {
+    let cancelled = false;
+    const draw = () => {
+      if (cancelled) return;
+      const cache = boost ? cardTextBoostTexCache : cardTextTexCache;
+      let byAccent = cache.get(items);
+      if (!byAccent) {
+        byAccent = new Map();
+        cache.set(items, byAccent);
+      }
+      let entry = byAccent.get(accentKey);
+      if (!entry) {
+        const accentResolver = Array.isArray(accent) ? accent : null;
+        entry = {
+          normal: items.map((it, i) => makeCardFloatingTextTexture(it.title, it.text, resolveAccent(accentResolver || accent, i), false, boost)),
+          hover: items.map((it, i) => makeCardFloatingTextTexture(it.title, it.text, resolveAccent(accentResolver || accent, i), true, boost)),
+        };
+        byAccent.set(accentKey, entry);
+      }
+      setTexs(entry);
+    };
+    Promise.all([
+      document.fonts.load(`${boost ? 56 : 46}px "Fredoka"`),
+      document.fonts.load('400 18px "Fredoka"'),
+      document.fonts.ready,
+    ]).then(draw).catch(draw);
+    return () => { cancelled = true; };
+  }, [items, accentKey, boost]);
+
+  return texs;
+}
+
+function makeHeroTitleTexture(title, subtitle, accent, boost = false) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 640;
+  canvas.height = 420;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, 640, 420);
+
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  const glow = ctx.createRadialGradient(320, 110, 0, 320, 110, 220);
+  glow.addColorStop(0, `rgba(${accent}, 0.18)`);
+  glow.addColorStop(0.55, `rgba(${accent}, 0.08)`);
+  glow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, 640, 420);
+
+  ctx.fillStyle = `rgba(${accent}, 0.88)`;
+  ctx.fillRect(228, 58, 184, 2);
+
+  const titleLines = splitTitleLines(title);
+  let size = boost ? 68 : 58;
+  ctx.font = `500 ${size}px "Fredoka"`;
+  const titleMaxWidth = boost ? 560 : 520;
+  while (titleLines.some((line) => ctx.measureText(line).width > titleMaxWidth) && size > (boost ? 30 : 24)) {
+    size -= 1;
+    ctx.font = `500 ${size}px "Fredoka"`;
+  }
+
+  ctx.save();
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+  ctx.shadowBlur = 20;
+  ctx.fillStyle = '#ffffff';
+  const titleStartY = boost ? 138 : 132;
+  const titleGap = boost ? 66 : 50;
+  titleLines.slice(0, 2).forEach((line, i) => ctx.fillText(line, 320, titleStartY + i * titleGap));
+  ctx.restore();
+
+  let subSize = boost ? 38 : 30;
+  ctx.font = `500 ${subSize}px "Fredoka"`;
+  while (ctx.measureText(subtitle).width > (boost ? 560 : 520) && subSize > (boost ? 16 : 14)) {
+    subSize -= 1;
+    ctx.font = `500 ${subSize}px "Fredoka"`;
+  }
+  ctx.save();
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
+  ctx.shadowBlur = 14;
+  ctx.fillStyle = `rgba(${accent}, 0.95)`;
+  ctx.fillText(subtitle, 320, boost ? 244 : 226);
+  ctx.restore();
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.needsUpdate = true;
+  return texture;
+}
+
+function useHeroTitleTexture(title, subtitle, accent, boost = false) {
+  const [tex, setTex] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const draw = () => {
+      if (cancelled) return;
+      setTex(makeHeroTitleTexture(title, subtitle, accent, boost));
+    };
+    Promise.all([
+      document.fonts.load(`500 ${boost ? 68 : 64}px "Fredoka"`),
+      document.fonts.load(`500 ${boost ? 38 : 34}px "Fredoka"`),
+      document.fonts.ready,
+    ]).then(draw).catch(draw);
+    return () => { cancelled = true; };
+  }, [title, subtitle, accent, boost]);
 
   return tex;
 }
@@ -687,7 +1199,7 @@ function makeSectionsTexture(item, category, accent) {
   ctx.setLineDash([]);
   ctx.font = '500 26px "Fredoka"';
   ctx.fillStyle = 'rgba(255,255,255,0.45)';
-  ctx.fillText('Cosmi Chameleon', 500, 1255);
+  ctx.fillText('Cosmichameleon', 500, 1255);
 
   ctx.restore();
   const texture = new THREE.CanvasTexture(canvas);
@@ -803,7 +1315,7 @@ function makeDetailTexture(item, category, accent) {
   ctx.setLineDash([]);
   ctx.font = '500 28px "Fredoka"';
   ctx.fillStyle = 'rgba(255,255,255,0.45)';
-  ctx.fillText('Cosmi Chameleon', 500, 1170);
+  ctx.fillText('Cosmichameleon', 500, 1170);
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.needsUpdate = true;
@@ -830,12 +1342,27 @@ function useDetailTexture(item, category, accent) {
   return tex;
 }
 
-function OrbitingCard({ title, subtitle, color, items, stairIndex, totalCards, journey, onSelect, selectedIndex, onOptionClick }) {
+function OrbitingCard({ title, subtitle, color, items, stairIndex, totalCards, journey, view, kind = 'default', onSelect, selectedIndex, onOptionClick, onSubClick }) {
   const groupRef = useRef();
   const meshRef = useRef();
+  const mainFaceRef = useRef();
+  const mainTitleRef = useRef();
+  const mainTitleBackRef = useRef();
+  const mainParticleRef = useRef();
   const wrapRef = useRef();
   const optionsRef = useRef([]);
+  const optionBodyRefs = useRef([]);
+  const optionFaceRefs = useRef([]);
+  const optionTextRefs = useRef([]);
+  const optionParticleRefs = useRef([]);
   const optionHoverRef = useRef([]);
+  const subRefs = useRef([]);
+  const subBodyRefs = useRef([]);
+  const subFaceRefs = useRef([]);
+  const subTitleBackRefs = useRef([]);
+  const subTextRefs = useRef([]);
+  const subParticleRefs = useRef([]);
+  const subHoverRef = useRef([]);
   const selectedRef = useRef(null);
   const scroll = useScroll();
   const hoverRef = useRef(false);
@@ -844,19 +1371,50 @@ function OrbitingCard({ title, subtitle, color, items, stairIndex, totalCards, j
   const posXRef = useRef(0);
   const posYZRef = useRef({ y: 0, z: 0 });
   const rotYRef = useRef(0);
+  const isServiceTitleBoost = true;
 
-  const worldX = -15 + stairIndex * 10 + 2.5;
-  const orbitRadius = 4.5;
-  const entryStart = 0.24;
+  const worldX = view === 'default'
+    ? -17.2 + stairIndex * 6.2
+    : -12.4 + stairIndex * 6.2;
+  const orbitRadius = 3.7;
+  const entryStart = -0.12;
   const entryDur = 0.07;
   const flyIn = 6;
-  const JOURNEY_CARD_SCALE = 1.3;
+  const JOURNEY_CARD_SCALE = 1.05;
   const OPTION_ROW = 3.3;
   const OPTION_COL = 9.3;
-  const OPTION_SIZE = [8.4, 2.63];
+  const OPTION_SIZE = [2.85, 2.0];
+  const OPTION_CARD_DEPTH = 0.22;
+  const SUB_CARD_SIZE = [2.85, 2.0];
+  const SUB_CARD_SCALE = 0.54;
+  const SUB_CARD_SPREAD = 26;
+  const SUB_CARD_OFFSET = 11.5;
+  const SUB_CARD_DEPTH = 0.22;
+  const SUB_ORBIT_RADIUS = 4.3;
+  const cardsClickable = false;
+  const serviceItemAccents = React.useMemo(
+    () => (kind === 'service' ? items.map((_, i) => SERVICE_ITEM_COLORS[i % SERVICE_ITEM_COLORS.length]) : null),
+    [kind, items]
+  );
 
-  const normalTex = useCardTexture(title, subtitle, color, null);
+  const mainFaceTexs = useCardShellTextures(color);
+  const mainTitleTex = useHeroTitleTexture(title, subtitle, color, true);
   const optionTexs = useOptionTextures(items, color);
+  const optionParticleData = React.useMemo(
+    () => items.map((_, i) => makeParticlePositions(i + 7, 24, OPTION_SIZE[0] * 0.44, OPTION_SIZE[1] * 0.34, OPTION_CARD_DEPTH * 0.5)),
+    [items]
+  );
+  const cardTexs = useCardStyleTextures(items, serviceItemAccents || color);
+  const serviceTitleBoost = true;
+  const cardTextTexs = useCardFloatingTextTextures(items, serviceItemAccents || color, true);
+  const cardParticleData = React.useMemo(
+    () => items.map((_, i) => makeParticlePositions(i + 1, 28, SUB_CARD_SIZE[0] * 0.44, SUB_CARD_SIZE[1] * 0.34, SUB_CARD_DEPTH * 0.5)),
+    [items]
+  );
+  const mainCardParticleData = React.useMemo(
+    () => makeParticlePositions(stairIndex + 17, 30, SUB_CARD_SIZE[0] * 0.42, SUB_CARD_SIZE[1] * 0.32, SUB_CARD_DEPTH * 0.5),
+    [stairIndex]
+  );
 
   useEffect(() => {
     selectedRef.current = selectedIndex;
@@ -864,13 +1422,28 @@ function OrbitingCard({ title, subtitle, color, items, stairIndex, totalCards, j
     document.body.style.cursor = 'auto';
   }, [selectedIndex]);
 
+  useEffect(() => {
+    hoverRef.current = false;
+    for (let i = 0; i < subHoverRef.current.length; i++) subHoverRef.current[i] = false;
+    document.body.style.cursor = 'auto';
+  }, [view]);
+
   const isJourneying = journey !== null;
   const isJourneyTarget = isJourneying && journey.card === stairIndex;
+  const mirrorSign = stairIndex >= 2 ? -1 : 1;
 
   useFrame((state, delta) => {
     if (!groupRef.current || !meshRef.current) return;
 
     if (isJourneying) {
+      for (let i = 0; i < subRefs.current.length; i++) {
+        if (subRefs.current[i]) subRefs.current[i].visible = false;
+        if (subBodyRefs.current[i]) subBodyRefs.current[i].visible = false;
+        if (subFaceRefs.current[i]) subFaceRefs.current[i].visible = false;
+        if (subTitleBackRefs.current[i]) subTitleBackRefs.current[i].visible = false;
+        if (subTextRefs.current[i]) subTextRefs.current[i].visible = false;
+        if (subParticleRefs.current[i]) subParticleRefs.current[i].visible = false;
+      }
       if (isJourneyTarget) {
         groupRef.current.visible = true;
         meshRef.current.visible = false;
@@ -878,18 +1451,12 @@ function OrbitingCard({ title, subtitle, color, items, stairIndex, totalCards, j
         posYZRef.current.y = THREE.MathUtils.lerp(posYZRef.current.y, 0, 0.055);
         posYZRef.current.z = THREE.MathUtils.lerp(posYZRef.current.z, 0, 0.055);
         const turnSign = stairIndex >= 2 ? 1 : -1;
-        const mirrorSign = stairIndex >= 2 ? -1 : 1;
         rotYRef.current = THREE.MathUtils.lerp(rotYRef.current, turnSign * Math.PI / 2, 0.055);
         groupRef.current.position.set(posXRef.current, posYZRef.current.y, posYZRef.current.z);
         groupRef.current.rotation.set(0, rotYRef.current, 0);
         meshRef.current.rotation.x = THREE.MathUtils.lerp(meshRef.current.rotation.x, 0, 0.1);
         scaleRef.current = THREE.MathUtils.lerp(scaleRef.current, JOURNEY_CARD_SCALE, 0.06);
         groupRef.current.scale.setScalar(Math.max(0.0001, scaleRef.current));
-
-        if (normalTex && meshRef.current.material.map !== normalTex) {
-          meshRef.current.material.map = normalTex;
-          meshRef.current.material.needsUpdate = true;
-        }
         meshRef.current.material.opacity = THREE.MathUtils.lerp(meshRef.current.material.opacity, 1, 0.08);
 
         const optIn = THREE.MathUtils.clamp((state.camera.position.x - 18) / 8, 0, 1);
@@ -897,15 +1464,21 @@ function OrbitingCard({ title, subtitle, color, items, stairIndex, totalCards, j
         if (sel !== null) {
           const cam = state.camera;
           for (let i = 0; i < optionsRef.current.length; i++) {
-            const m = optionsRef.current[i];
+            const g = optionsRef.current[i];
+            const body = optionBodyRefs.current[i];
+            const face = optionFaceRefs.current[i];
+            const t = optionTextRefs.current[i];
+            const p = optionParticleRefs.current[i];
             const hover = !!optionHoverRef.current[i];
-            const tex = hover ? optionTexs.hover[i] : optionTexs.normal[i];
-            if (tex && m.material.map !== tex) {
-              m.material.map = tex;
-              m.material.needsUpdate = true;
+            const tex = hover ? cardTexs.hover[i] : cardTexs.normal[i];
+            if (g) {
+              g.visible = true;
             }
             if (i === sel) {
-              m.visible = true;
+              if (body) body.visible = true;
+              if (face) face.visible = true;
+              if (t) t.visible = true;
+              if (p) p.visible = true;
               const col = i % 2;
               const row = Math.floor(i / 2);
               const lastRowAlone = items.length % 2 === 1 && row === Math.floor(items.length / 2);
@@ -914,44 +1487,121 @@ function OrbitingCard({ title, subtitle, color, items, stairIndex, totalCards, j
               _dirVec.copy(_ndcVec).sub(cam.position).normalize();
               _tVec.copy(cam.position).addScaledVector(_dirVec, THUMB_DEPTH);
               const local = wrapRef.current ? wrapRef.current.worldToLocal(_ndcVec.copy(_tVec)) : _ndcVec;
-              m.position.x = THREE.MathUtils.lerp(m.position.x, local.x, 0.09);
-              m.position.y = THREE.MathUtils.lerp(m.position.y, local.y, 0.09);
-              m.position.z = THREE.MathUtils.lerp(m.position.z, local.z, 0.09);
-              m.scale.x = THREE.MathUtils.lerp(m.scale.x, mirrorSign * THUMB_SCALE, 0.09);
-              m.scale.y = THREE.MathUtils.lerp(m.scale.y, THUMB_SCALE, 0.09);
-              m.material.opacity = THREE.MathUtils.lerp(m.material.opacity, 1, 0.09);
+              g.position.x = THREE.MathUtils.lerp(g.position.x, local.x, 0.09);
+              g.position.y = THREE.MathUtils.lerp(g.position.y, local.y, 0.09);
+              g.position.z = THREE.MathUtils.lerp(g.position.z, local.z, 0.09);
+              g.scale.x = THREE.MathUtils.lerp(g.scale.x, mirrorSign * THUMB_SCALE, 0.09);
+              g.scale.y = THREE.MathUtils.lerp(g.scale.y, THUMB_SCALE, 0.09);
+              g.scale.z = THREE.MathUtils.lerp(g.scale.z, THUMB_SCALE, 0.09);
+              if (body) {
+                body.material.opacity = THREE.MathUtils.lerp(body.material.opacity, 0.9, 0.09);
+              }
+              if (face && tex && face.material.map !== tex) {
+                face.material.map = tex;
+                face.material.needsUpdate = true;
+              }
+              if (face) {
+                face.material.opacity = THREE.MathUtils.lerp(face.material.opacity, 1, 0.09);
+              }
+              if (t) {
+                const textTex = hover ? cardTextTexs.hover[i] : cardTextTexs.normal[i];
+                if (textTex && t.material.map !== textTex) {
+                  t.material.map = textTex;
+                  t.material.needsUpdate = true;
+                }
+                t.material.opacity = THREE.MathUtils.lerp(t.material.opacity, 1, 0.09);
+                t.material.depthTest = false;
+                const textScale = hover ? 1.04 : 1;
+                t.scale.x = THREE.MathUtils.lerp(t.scale.x, textScale, 0.09);
+                t.scale.y = THREE.MathUtils.lerp(t.scale.y, textScale, 0.09);
+                t.scale.z = THREE.MathUtils.lerp(t.scale.z, textScale, 0.09);
+              }
+              if (p) {
+                p.material.opacity = THREE.MathUtils.lerp(p.material.opacity, 0.55, 0.09);
+              }
             } else {
-              m.material.opacity = THREE.MathUtils.lerp(m.material.opacity, 0, 0.12);
-              if (m.material.opacity < 0.03) m.visible = false;
+              if (body) body.material.opacity = THREE.MathUtils.lerp(body.material.opacity, 0, 0.12);
+              if (face && tex && face.material.map !== tex) {
+                face.material.map = tex;
+                face.material.needsUpdate = true;
+              }
+              if (face) {
+                face.material.opacity = THREE.MathUtils.lerp(face.material.opacity, 0, 0.12);
+              }
+              if (t) {
+                t.material.opacity = THREE.MathUtils.lerp(t.material.opacity, 0, 0.12);
+              }
+              if (p) {
+                p.material.opacity = THREE.MathUtils.lerp(p.material.opacity, 0, 0.12);
+              }
+              if (g.scale.x < 0.0001) g.visible = false;
             }
           }
         } else {
           for (let i = 0; i < optionsRef.current.length; i++) {
-            const m = optionsRef.current[i];
-            m.visible = true;
-            m.material.opacity = optIn;
+            const g = optionsRef.current[i];
+            const body = optionBodyRefs.current[i];
+            const face = optionFaceRefs.current[i];
+            const t = optionTextRefs.current[i];
+            const p = optionParticleRefs.current[i];
+            if (!g) continue;
+            g.visible = true;
+            if (body) body.visible = true;
+            if (face) face.visible = true;
+            if (t) t.visible = true;
+            if (p) p.visible = true;
             const hover = !!optionHoverRef.current[i];
-            const tex = hover ? optionTexs.hover[i] : optionTexs.normal[i];
-            if (tex && m.material.map !== tex) {
-              m.material.map = tex;
-              m.material.needsUpdate = true;
+            const tex = hover ? cardTexs.hover[i] : cardTexs.normal[i];
+            if (face && tex && face.material.map !== tex) {
+              face.material.map = tex;
+              face.material.needsUpdate = true;
             }
             const ts = hover ? 1.16 : 1;
-            m.scale.x = THREE.MathUtils.lerp(m.scale.x, mirrorSign * ts, 0.15);
-            m.scale.y = THREE.MathUtils.lerp(m.scale.y, ts, 0.15);
+            g.scale.x = THREE.MathUtils.lerp(g.scale.x, mirrorSign * ts, 0.15);
+            g.scale.y = THREE.MathUtils.lerp(g.scale.y, ts, 0.15);
+            g.scale.z = THREE.MathUtils.lerp(g.scale.z, ts, 0.15);
             const col = i % 2;
             const row = Math.floor(i / 2);
             const lastRowAlone = items.length % 2 === 1 && row === Math.floor(items.length / 2);
             const baseX = lastRowAlone ? 0 : (col === 0 ? -OPTION_COL / 2 : OPTION_COL / 2);
             const baseY = -row * OPTION_ROW;
-            m.position.x = THREE.MathUtils.lerp(m.position.x, baseX, 0.09);
-            m.position.y = THREE.MathUtils.lerp(m.position.y, baseY, 0.09);
-            m.position.z = THREE.MathUtils.lerp(m.position.z, 0, 0.09);
+            g.position.x = THREE.MathUtils.lerp(g.position.x, baseX, 0.09);
+            g.position.y = THREE.MathUtils.lerp(g.position.y, baseY, 0.09);
+            g.position.z = THREE.MathUtils.lerp(g.position.z, 0, 0.09);
+            if (body) {
+              body.material.opacity = THREE.MathUtils.lerp(body.material.opacity, optIn * 0.9, 0.1);
+            }
+            if (face) {
+              face.material.opacity = THREE.MathUtils.lerp(face.material.opacity, optIn, 0.1);
+            }
+            if (t) {
+              const textTex = hover ? cardTextTexs.hover[i] : cardTextTexs.normal[i];
+              if (textTex && t.material.map !== textTex) {
+                t.material.map = textTex;
+                t.material.needsUpdate = true;
+              }
+              t.material.opacity = THREE.MathUtils.lerp(t.material.opacity, optIn, 0.1);
+              t.material.depthTest = false;
+              const textScale = hover ? 1.04 : 1;
+              t.scale.x = THREE.MathUtils.lerp(t.scale.x, textScale, 0.1);
+              t.scale.y = THREE.MathUtils.lerp(t.scale.y, textScale, 0.1);
+              t.scale.z = THREE.MathUtils.lerp(t.scale.z, textScale, 0.1);
+            }
+            if (p) {
+              p.material.opacity = THREE.MathUtils.lerp(p.material.opacity, optIn * (hover ? 0.72 : 0.5), 0.1);
+            }
           }
         }
       } else {
         hoverRef.current = false;
         groupRef.current.visible = false;
+        for (let i = 0; i < subRefs.current.length; i++) {
+          if (subRefs.current[i]) subRefs.current[i].visible = false;
+          if (subBodyRefs.current[i]) subBodyRefs.current[i].visible = false;
+          if (subFaceRefs.current[i]) subFaceRefs.current[i].visible = false;
+          if (subTextRefs.current[i]) subTextRefs.current[i].visible = false;
+          if (subParticleRefs.current[i]) subParticleRefs.current[i].visible = false;
+        }
       }
       return;
     }
@@ -960,16 +1610,34 @@ function OrbitingCard({ title, subtitle, color, items, stairIndex, totalCards, j
     meshRef.current.visible = true;
     meshRef.current.position.set(0, 0, 0);
     for (let i = 0; i < optionsRef.current.length; i++) {
-      optionsRef.current[i].material.opacity = 0;
-      optionsRef.current[i].scale.set(1, 1, 1);
-      if (optionTexs.normal[i]) {
-        optionsRef.current[i].material.map = optionTexs.normal[i];
-        optionsRef.current[i].material.needsUpdate = true;
-      }
+      if (optionsRef.current[i]) optionsRef.current[i].visible = false;
+      if (optionBodyRefs.current[i]) optionBodyRefs.current[i].visible = false;
+      if (optionFaceRefs.current[i]) optionFaceRefs.current[i].visible = false;
+      if (optionTextRefs.current[i]) optionTextRefs.current[i].visible = false;
+      if (optionParticleRefs.current[i]) optionParticleRefs.current[i].visible = false;
+      if (optionsRef.current[i]) optionsRef.current[i].scale.set(1, 1, 1);
       optionHoverRef.current[i] = false;
+    }
+    for (let i = 0; i < subTextRefs.current.length; i++) {
+      if (subTextRefs.current[i]) subTextRefs.current[i].visible = false;
+    }
+    for (let i = 0; i < subRefs.current.length; i++) {
+      if (subBodyRefs.current[i]) subBodyRefs.current[i].visible = false;
+      if (subFaceRefs.current[i]) subFaceRefs.current[i].visible = false;
+      if (subParticleRefs.current[i]) subParticleRefs.current[i].visible = false;
     }
     if (!hoverRef.current && !optionHoverRef.current.some(Boolean)) {
       document.body.style.cursor = 'auto';
+    }
+
+    const isActive = view === 'services'
+      ? kind === 'service'
+      : view === 'products'
+        ? kind !== 'service'
+        : kind === 'default';
+    if (!isActive) {
+      groupRef.current.visible = false;
+      return;
     }
 
     const offset = scroll.offset;
@@ -993,45 +1661,209 @@ function OrbitingCard({ title, subtitle, color, items, stairIndex, totalCards, j
     const orbitY = Math.sin(angle) * orbitRadius;
     const orbitZ = Math.cos(angle) * orbitRadius * 0.6;
 
+    const isServicesMode = view === 'services' && stairIndex === 0;
+
     posXRef.current = THREE.MathUtils.lerp(posXRef.current, worldX, 0.1);
-    posYZRef.current.y = THREE.MathUtils.lerp(posYZRef.current.y, orbitY, 0.1);
-    posYZRef.current.z = THREE.MathUtils.lerp(posYZRef.current.z, orbitZ, 0.1);
     rotYRef.current = THREE.MathUtils.lerp(rotYRef.current, 0, 0.1);
 
-    groupRef.current.position.x = posXRef.current + (1 - eased) * flyIn;
-    groupRef.current.position.y = posYZRef.current.y;
-    groupRef.current.position.z = posYZRef.current.z;
-    groupRef.current.rotation.set(0, rotYRef.current, 0);
+    if (isServicesMode) {
+      posYZRef.current.y = THREE.MathUtils.lerp(posYZRef.current.y, 0, 0.1);
+      posYZRef.current.z = THREE.MathUtils.lerp(posYZRef.current.z, 0, 0.1);
+      groupRef.current.position.x = posXRef.current + (1 - eased) * flyIn;
+      groupRef.current.position.y = posYZRef.current.y;
+      groupRef.current.position.z = posYZRef.current.z;
+      groupRef.current.rotation.set(0, rotYRef.current, 0);
+      groupRef.current.scale.setScalar(1);
+      meshRef.current.visible = false;
 
-    meshRef.current.rotation.x = -angle;
+      for (let i = 0; i < subRefs.current.length; i++) {
+        const g = subRefs.current[i];
+        const body = subBodyRefs.current[i];
+        const face = subFaceRefs.current[i];
+        const t = subTextRefs.current[i];
+        const p = subParticleRefs.current[i];
+        if (!g) continue;
+        const itemColor = serviceItemAccents ? serviceItemAccents[i] : color;
+        g.visible = true;
+        if (body) body.visible = true;
+        if (face) face.visible = true;
+        if (subTitleBackRefs.current[i]) subTitleBackRefs.current[i].visible = serviceTitleBoost;
+        if (t) t.visible = true;
+        if (p) p.visible = true;
+        const hover = !!subHoverRef.current[i];
+        const tex = hover ? cardTexs.hover[i] : cardTexs.normal[i];
+        if (face && tex && face.material.map !== tex) {
+          face.material.map = tex;
+          face.material.needsUpdate = true;
+        }
+        const count = subRefs.current.length;
+        const phase = (i / count) * Math.PI * 2;
+        const subVisual = phase - dnaRotation;
+        const centeredIndex = i - (count - 1) / 2;
+        const subLocalX = (count > 1 ? (centeredIndex / (count - 1)) * SUB_CARD_SPREAD : 0) + SUB_CARD_OFFSET;
+        g.position.x = THREE.MathUtils.lerp(g.position.x, subLocalX, 0.09);
+        g.position.y = THREE.MathUtils.lerp(g.position.y, Math.sin(subVisual) * SUB_ORBIT_RADIUS, 0.09);
+        g.position.z = THREE.MathUtils.lerp(g.position.z, Math.cos(subVisual) * SUB_ORBIT_RADIUS * 0.6, 0.09);
+        const rotTarget = -subVisual;
+        let rDiff = rotTarget - g.rotation.x;
+        rDiff = ((rDiff + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
+        g.rotation.x += rDiff * 0.09;
+        const subFacing = Math.cos(subVisual);
+        const subBase = 0.7 + (subFacing * 0.5 + 0.5) * 0.5;
+        const subTarget = subBase * (hover ? 1.1 : 1) * SUB_CARD_SCALE;
+        g.scale.x = THREE.MathUtils.lerp(g.scale.x, subTarget, 0.12);
+        g.scale.y = THREE.MathUtils.lerp(g.scale.y, subTarget, 0.12);
+        g.scale.z = THREE.MathUtils.lerp(g.scale.z, subTarget, 0.12);
 
-    const facing = Math.cos(angle);
-    const baseScale = 0.7 + (facing * 0.5 + 0.5) * 0.5;
-    const targetScale = baseScale * (hoverRef.current ? 1.1 : 1);
-    scaleRef.current = THREE.MathUtils.lerp(scaleRef.current, targetScale, 0.12);
-    groupRef.current.scale.setScalar(Math.max(0.0001, scaleRef.current));
+        if (body) {
+          body.material.color.set(`rgb(${itemColor})`);
+          body.material.emissive.set(`rgb(${itemColor})`);
+          body.material.opacity = eased * (hover ? 0.94 : 0.88);
+        }
+        if (face) {
+          face.material.opacity = eased;
+        }
 
-    if (normalTex && meshRef.current.material.map !== normalTex) {
-      meshRef.current.material.map = normalTex;
-      meshRef.current.material.needsUpdate = true;
+        if (t) {
+          const textTex = hover ? cardTextTexs.hover[i] : cardTextTexs.normal[i];
+          if (textTex && t.material.map !== textTex) {
+            t.material.map = textTex;
+            t.material.needsUpdate = true;
+          }
+          t.material.opacity = eased;
+          t.material.depthTest = false;
+          const textScale = hover ? (serviceTitleBoost ? 1.12 : 1.04) : (serviceTitleBoost ? 1.06 : 1);
+          t.scale.x = THREE.MathUtils.lerp(t.scale.x, textScale, 0.12);
+          t.scale.y = THREE.MathUtils.lerp(t.scale.y, textScale, 0.12);
+          t.scale.z = THREE.MathUtils.lerp(t.scale.z, textScale, 0.12);
+        }
+
+        if (p) {
+          p.material.color.set(`rgb(${itemColor})`);
+          p.material.opacity = eased * (hover ? 0.84 : 0.58);
+        }
+      }
+    } else {
+      posYZRef.current.y = THREE.MathUtils.lerp(posYZRef.current.y, orbitY, 0.1);
+      posYZRef.current.z = THREE.MathUtils.lerp(posYZRef.current.z, orbitZ, 0.1);
+      groupRef.current.position.x = posXRef.current + (1 - eased) * flyIn;
+      groupRef.current.position.y = posYZRef.current.y;
+      groupRef.current.position.z = posYZRef.current.z;
+      groupRef.current.rotation.set(0, rotYRef.current, 0);
+
+      meshRef.current.rotation.x = -angle;
+
+      const facing = Math.cos(angle);
+      const baseScale = 0.7 + (facing * 0.5 + 0.5) * 0.5;
+      const targetScale = baseScale * (hoverRef.current ? 1.1 : 1);
+      scaleRef.current = THREE.MathUtils.lerp(scaleRef.current, targetScale, 0.12);
+      groupRef.current.scale.setScalar(Math.max(0.0001, scaleRef.current));
+      if (mainFaceRef.current) mainFaceRef.current.visible = true;
+      if (mainTitleBackRef.current) mainTitleBackRef.current.visible = true;
+      if (mainTitleRef.current) mainTitleRef.current.visible = true;
+      if (mainParticleRef.current) mainParticleRef.current.visible = true;
+      if (mainFaceTexs.normal && mainFaceRef.current && mainFaceRef.current.material.map !== mainFaceTexs.normal) {
+        mainFaceRef.current.material.map = mainFaceTexs.normal;
+        mainFaceRef.current.material.needsUpdate = true;
+      }
+      if (mainTitleTex && mainTitleRef.current && mainTitleRef.current.material.map !== mainTitleTex) {
+        mainTitleRef.current.material.map = mainTitleTex;
+        mainTitleRef.current.material.needsUpdate = true;
+      }
+      if (mainTitleTex && mainTitleBackRef.current && mainTitleBackRef.current.material.map !== mainTitleTex) {
+        mainTitleBackRef.current.material.map = mainTitleTex;
+        mainTitleBackRef.current.material.needsUpdate = true;
+      }
+      meshRef.current.material.opacity = THREE.MathUtils.lerp(meshRef.current.material.opacity, eased * 0.94, 0.1);
+      if (mainFaceRef.current) {
+        mainFaceRef.current.material.opacity = THREE.MathUtils.lerp(mainFaceRef.current.material.opacity, eased, 0.1);
+      }
+      if (mainTitleBackRef.current) {
+        mainTitleBackRef.current.material.opacity = THREE.MathUtils.lerp(mainTitleBackRef.current.material.opacity, eased * 0.42, 0.1);
+      }
+      if (mainTitleRef.current) {
+        mainTitleRef.current.material.opacity = THREE.MathUtils.lerp(mainTitleRef.current.material.opacity, eased, 0.1);
+      }
+      if (mainParticleRef.current) {
+        mainParticleRef.current.material.opacity = THREE.MathUtils.lerp(mainParticleRef.current.material.opacity, eased * 0.6, 0.1);
+      }
     }
-
-    meshRef.current.material.opacity = eased;
   });
 
   return (
     <group ref={groupRef}>
-      {normalTex && (
+      <mesh
+        ref={meshRef}
+        onPointerOver={(e) => {
+          if (!cardsClickable) return;
+          e.stopPropagation();
+          if (!isJourneying) {
+            hoverRef.current = true;
+            document.body.style.cursor = 'pointer';
+          }
+        }}
+        onPointerOut={() => {
+          if (!cardsClickable) return;
+          hoverRef.current = false;
+          if (!optionHoverRef.current.some(Boolean)) document.body.style.cursor = 'auto';
+        }}
+        onClick={(e) => {
+          if (!cardsClickable) return;
+          e.stopPropagation();
+          if (!isJourneying) onSelect();
+        }}
+      >
+        <boxGeometry args={[SUB_CARD_SIZE[0], SUB_CARD_SIZE[1], SUB_CARD_DEPTH]} />
+        <meshStandardMaterial
+          color={`rgb(10, 14, 20)`}
+          transparent
+          opacity={0}
+          roughness={0.34}
+          metalness={0.08}
+          emissive={`rgb(${color})`}
+          emissiveIntensity={0.07}
+          depthWrite={false}
+        />
+        {mainCardParticleData && (
+          <points ref={mainParticleRef} position={[0, 0, 0]} renderOrder={1}>
+            <bufferGeometry>
+              <bufferAttribute
+                attach="attributes-position"
+                array={mainCardParticleData}
+                count={mainCardParticleData.length / 3}
+                itemSize={3}
+              />
+            </bufferGeometry>
+            <pointsMaterial
+              color={`rgb(${color})`}
+              size={0.03}
+              sizeAttenuation
+              transparent
+              opacity={0}
+              depthWrite={false}
+              toneMapped={false}
+            />
+          </points>
+        )}
         <mesh
-          ref={meshRef}
-          onPointerOver={(e) => { e.stopPropagation(); if (!isJourneying) { hoverRef.current = true; document.body.style.cursor = 'pointer'; } }}
-          onPointerOut={() => { hoverRef.current = false; if (!optionHoverRef.current.some(Boolean)) document.body.style.cursor = 'auto'; }}
-          onClick={(e) => { e.stopPropagation(); if (!isJourneying) onSelect(); }}
+          ref={mainFaceRef}
+          position={[0, 0, SUB_CARD_DEPTH / 2 + 0.01]}
+          renderOrder={2}
         >
-          <planeGeometry args={[3.8, 2.65]} />
-          <meshBasicMaterial map={normalTex} transparent opacity={0} side={THREE.DoubleSide} depthWrite={false} toneMapped={false} />
+          <planeGeometry args={SUB_CARD_SIZE} />
+          <meshBasicMaterial map={mainFaceTexs.normal} transparent opacity={0} side={THREE.DoubleSide} depthWrite={false} toneMapped={false} />
         </mesh>
-      )}
+        {mainTitleTex && (
+          <mesh
+            ref={mainTitleRef}
+            position={[0, 0.06, SUB_CARD_DEPTH / 2 + 0.32]}
+            renderOrder={3}
+          >
+            <planeGeometry args={[SUB_CARD_SIZE[0] * 1.0, SUB_CARD_SIZE[1] * 0.74]} />
+            <meshBasicMaterial map={mainTitleTex} transparent opacity={0} side={THREE.DoubleSide} depthWrite={false} depthTest={false} toneMapped={false} />
+          </mesh>
+        )}
+      </mesh>
       {optionTexs.normal.length > 0 && (
         <group ref={wrapRef} position={[0, ((Math.ceil(items.length / 2) - 1) * OPTION_ROW) / 2 + 0.7, 0]}>
           {items.map((it, i) => {
@@ -1040,11 +1872,12 @@ function OrbitingCard({ title, subtitle, color, items, stairIndex, totalCards, j
             const lastRowAlone = items.length % 2 === 1 && row === Math.floor(items.length / 2);
             const gridX = lastRowAlone ? 0 : (col === 0 ? -OPTION_COL / 2 : OPTION_COL / 2);
             return (
-              <mesh
+              <group
                 key={i}
                 ref={(el) => { if (el) optionsRef.current[i] = el; }}
                 position={[gridX, -row * OPTION_ROW, 0]}
                 onPointerOver={(e) => {
+                  if (!cardsClickable) return;
                   e.stopPropagation();
                   if (isJourneying) {
                     optionHoverRef.current[i] = true;
@@ -1052,26 +1885,175 @@ function OrbitingCard({ title, subtitle, color, items, stairIndex, totalCards, j
                   }
                 }}
                 onPointerOut={() => {
+                  if (!cardsClickable) return;
                   optionHoverRef.current[i] = false;
                   if (!optionHoverRef.current.some(Boolean)) document.body.style.cursor = 'auto';
                 }}
                 onClick={(e) => {
+                  if (!cardsClickable) return;
                   e.stopPropagation();
                   if (isJourneying) onOptionClick(i);
                 }}
               >
-                <planeGeometry args={OPTION_SIZE} />
-                <meshBasicMaterial map={optionTexs.normal[i]} transparent opacity={0} side={THREE.DoubleSide} depthWrite={false} toneMapped={false} />
-              </mesh>
+                <mesh
+                  ref={(el) => { if (el) optionBodyRefs.current[i] = el; }}
+                  renderOrder={0}
+                >
+                  <boxGeometry args={[OPTION_SIZE[0], OPTION_SIZE[1], OPTION_CARD_DEPTH]} />
+                  <meshStandardMaterial
+                    color={`rgb(10, 14, 20)`}
+                    transparent
+                    opacity={0}
+                    roughness={0.38}
+                    metalness={0.08}
+                    emissive={`rgb(${color})`}
+                    emissiveIntensity={0.06}
+                    depthWrite={false}
+                  />
+                </mesh>
+                {optionParticleData[i] && (
+                  <points
+                    ref={(el) => { if (el) optionParticleRefs.current[i] = el; }}
+                    position={[0, 0, 0]}
+                    renderOrder={1}
+                  >
+                    <bufferGeometry>
+                      <bufferAttribute
+                        attach="attributes-position"
+                        array={optionParticleData[i]}
+                        count={optionParticleData[i].length / 3}
+                        itemSize={3}
+                      />
+                    </bufferGeometry>
+                    <pointsMaterial
+                      color={`rgb(${color})`}
+                      size={0.03}
+                      sizeAttenuation
+                      transparent
+                      opacity={0}
+                      depthWrite={false}
+                      toneMapped={false}
+                    />
+                  </points>
+                )}
+                <mesh
+                  ref={(el) => { if (el) optionFaceRefs.current[i] = el; }}
+                  position={[0, 0, OPTION_CARD_DEPTH / 2 + 0.01]}
+                  renderOrder={2}
+                >
+                  <planeGeometry args={OPTION_SIZE} />
+                  <meshBasicMaterial map={optionTexs.normal[i]} transparent opacity={0} side={THREE.DoubleSide} depthWrite={false} toneMapped={false} />
+                </mesh>
+                {cardTextTexs.normal[i] && (
+                <mesh
+                  ref={(el) => { if (el) optionTextRefs.current[i] = el; }}
+                  position={[0, 0.04, OPTION_CARD_DEPTH / 2 + 0.24]}
+                  renderOrder={3}
+                >
+                  <planeGeometry args={[OPTION_SIZE[0] * 0.88, OPTION_SIZE[1] * 0.64]} />
+                  <meshBasicMaterial map={cardTextTexs.normal[i]} transparent opacity={0} side={THREE.DoubleSide} depthWrite={false} depthTest={false} toneMapped={false} />
+                </mesh>
+                )}
+              </group>
             );
           })}
+        </group>
+      )}
+
+      {stairIndex === 0 && optionTexs.normal.length > 0 && (
+      <group>
+          {items.map((it, i) => (
+              <group
+                key={`sub-${i}`}
+                ref={(el) => { if (el) subRefs.current[i] = el; }}
+                visible={false}
+                onPointerOver={(e) => {
+                  if (!cardsClickable) return;
+                  e.stopPropagation();
+                  if (view === 'services' && !isJourneying) {
+                    subHoverRef.current[i] = true;
+                    document.body.style.cursor = 'pointer';
+                  }
+                }}
+                onPointerOut={() => {
+                  if (!cardsClickable) return;
+                  subHoverRef.current[i] = false;
+                  if (!subHoverRef.current.some(Boolean)) document.body.style.cursor = 'auto';
+                }}
+                onClick={(e) => {
+                  if (!cardsClickable) return;
+                  e.stopPropagation();
+                  if (view === 'services' && !isJourneying) onSubClick(i);
+                }}
+            >
+              <mesh
+                ref={(el) => { if (el) subBodyRefs.current[i] = el; }}
+                renderOrder={0}
+              >
+                <boxGeometry args={[SUB_CARD_SIZE[0], SUB_CARD_SIZE[1], SUB_CARD_DEPTH]} />
+                <meshStandardMaterial
+                  color={`rgb(${serviceItemAccents ? serviceItemAccents[i] : color})`}
+                  transparent
+                  opacity={0}
+                  roughness={0.35}
+                  metalness={0.08}
+                  emissive={`rgb(${serviceItemAccents ? serviceItemAccents[i] : color})`}
+                  emissiveIntensity={0.08}
+                  depthWrite={false}
+                />
+              </mesh>
+              {cardParticleData[i] && (
+                <points
+                  ref={(el) => { if (el) subParticleRefs.current[i] = el; }}
+                  position={[0, 0, 0]}
+                  renderOrder={1}
+                >
+                  <bufferGeometry>
+                    <bufferAttribute
+                      attach="attributes-position"
+                      array={cardParticleData[i]}
+                      count={cardParticleData[i].length / 3}
+                      itemSize={3}
+                    />
+                  </bufferGeometry>
+                  <pointsMaterial
+                    color={`rgb(${serviceItemAccents ? serviceItemAccents[i] : color})`}
+                    size={0.03}
+                    sizeAttenuation
+                    transparent
+                    opacity={0}
+                    depthWrite={false}
+                    toneMapped={false}
+                  />
+                </points>
+              )}
+              <mesh
+                ref={(el) => { if (el) subFaceRefs.current[i] = el; }}
+                position={[0, 0, SUB_CARD_DEPTH / 2 + 0.01]}
+                renderOrder={2}
+              >
+                <planeGeometry args={SUB_CARD_SIZE} />
+                <meshBasicMaterial map={cardTexs.normal[i]} transparent opacity={0} side={THREE.DoubleSide} depthWrite={false} toneMapped={false} />
+              </mesh>
+              {cardTextTexs.normal[i] && (
+                <mesh
+                  ref={(el) => { if (el) subTextRefs.current[i] = el; }}
+                  position={[0, 0.07, SUB_CARD_DEPTH / 2 + 0.34]}
+                  renderOrder={4}
+                >
+                  <planeGeometry args={[SUB_CARD_SIZE[0] * 1.08, SUB_CARD_SIZE[1] * 0.76]} />
+                  <meshBasicMaterial map={cardTextTexs.normal[i]} transparent opacity={0} side={THREE.DoubleSide} depthWrite={false} depthTest={false} toneMapped={false} />
+                </mesh>
+              )}
+            </group>
+          ))}
         </group>
       )}
     </group>
   );
 }
 
-function DetailPanel({ item, category, color }) {
+function DetailPanel({ item, category, color, follow = false }) {
   const tex = useDetailTexture(item, category, color);
   const ref = useRef();
   const appearRef = useRef(0);
@@ -1079,13 +2061,15 @@ function DetailPanel({ item, category, color }) {
   useFrame((state, delta) => {
     if (!ref.current || !tex) return;
     appearRef.current = Math.min(1, appearRef.current + delta * 3.2);
+    const tx = follow ? state.camera.position.x + 14 : JOURNEY_END_X;
+    ref.current.position.x = THREE.MathUtils.lerp(ref.current.position.x, tx, 1 - Math.exp(-delta * 4));
     ref.current.position.y = THREE.MathUtils.lerp(ref.current.position.y, JOURNEY_CAM_LOOK_Y, 1 - Math.exp(-delta * 4));
     ref.current.material.opacity = appearRef.current;
     ref.current.scale.setScalar(0.9 + 0.1 * appearRef.current);
   });
 
   return (
-    <mesh ref={ref} position={[JOURNEY_END_X, JOURNEY_CAM_LOOK_Y + 2, 0]} rotation={[0, -Math.PI / 2, 0]}>
+    <mesh ref={ref} position={[follow ? 0 : JOURNEY_END_X, JOURNEY_CAM_LOOK_Y + 2, 0]} rotation={[0, -Math.PI / 2, 0]}>
       <planeGeometry args={DETAIL_SIZE} />
       <meshBasicMaterial map={tex} transparent opacity={0} side={THREE.DoubleSide} depthWrite={false} toneMapped={false} />
     </mesh>
@@ -1107,7 +2091,7 @@ const JOURNEY_LEFT_START = -34;
 
 const THUMB_NDC_X = -0.75;
 const THUMB_NDC_Y = 0.87;
-const THUMB_SCALE = 0.62;
+const THUMB_SCALE = 0.5;
 const THUMB_DEPTH = 25;
 const DETAIL_SIZE = [10, 13];
 
@@ -1117,7 +2101,7 @@ const _ndcVec = new THREE.Vector3();
 
 const sphereData = [
   {
-    title: "Our Expertise", subtitle: "Innovation", color: "255, 140, 60", stairIndex: 0,
+    title: "Our Expertise", subtitle: "Innovation", color: "56, 189, 248", stairIndex: 0,
     items: [
       { title: "Website Development", text: "Modern, blazing-fast sites built to convert.", sections: [
         { label: "Static Websites", tag: "STATIC", text: "Fast, brochure-style pages that present your brand with clean, dependable structure.", video: "static.mp4" },
@@ -1142,7 +2126,7 @@ const sphereData = [
     ],
   },
   {
-    title: "Why Cosmi", subtitle: "Chameleon", color: "170, 90, 255", stairIndex: 2,
+    title: "Why", subtitle: "Cosmichameleon", color: "170, 90, 255", stairIndex: 2,
     items: [
       { title: "Strategies Built For You", text: "No templates — every plan is custom." },
       { title: "Data Driven Decisions", text: "We let the numbers guide the way." },
@@ -1160,6 +2144,16 @@ const sphereData = [
       { title: "Platform Algorithm Evolution", text: "Staying ahead as the algorithms shift." },
     ],
   },
+];
+
+const SERVICE_ITEM_COLORS = [
+  '56, 189, 248',
+  '255, 92, 138',
+  '124, 92, 255',
+  '255, 184, 77',
+  '72, 231, 182',
+  '255, 106, 214',
+  '126, 255, 90',
 ];
 
 function DNAHelix({ journey, mouseYRef }) {
@@ -1198,6 +2192,7 @@ function DNAHelix({ journey, mouseYRef }) {
 export default function App() {
   const [journey, setJourney] = useState(null);
   const [selectedOption, setSelectedOption] = useState(null);
+  const [activeView, setActiveView] = useState('default');
   const adaptProgressRef = useRef(0);
   const mouseXRef = useRef(0);
   const mouseYRef = useRef(0);
@@ -1236,50 +2231,98 @@ export default function App() {
       window.removeEventListener('mouseleave', onLeave);
     };
   }, []);
+
+  const defaultCards = [
+    { title: '', subtitle: '', color: '56, 189, 248', kind: 'default', items: [] },
+    { title: '', subtitle: '', color: '255, 68, 136', kind: 'default', items: [] },
+    { title: '', subtitle: '', color: '170, 90, 255', kind: 'default', items: [] },
+    { title: '', subtitle: '', color: '126, 255, 90', kind: 'default', items: [] },
+    { title: '', subtitle: '', color: '255, 196, 87', kind: 'default', items: [] },
+    { title: sphereData[2].title, subtitle: sphereData[2].subtitle, color: sphereData[2].color, kind: 'default', items: [] },
+    { title: sphereData[3].title, subtitle: sphereData[3].subtitle, color: sphereData[3].color, kind: 'default', items: [] },
+  ].map((card, i) => ({ ...card, stairIndex: i }));
+
+  const productCardColors = ['0, 229, 255', '255, 92, 138', '124, 92, 255', '255, 184, 77'];
+  const productCards = sphereData[1].items.map((item, i) => ({
+    title: item.title,
+    subtitle: 'Products',
+    color: productCardColors[i % productCardColors.length],
+    kind: 'product',
+    items: [],
+    stairIndex: i,
+  }));
+
+  const serviceCards = [
+    {
+      title: sphereData[0].title,
+      subtitle: sphereData[0].subtitle,
+      color: sphereData[0].color,
+      kind: 'service',
+      items: sphereData[0].items,
+      stairIndex: 0,
+    },
+  ];
+
+  const sceneCards = activeView === 'services'
+    ? serviceCards
+    : activeView === 'products'
+      ? productCards
+      : defaultCards;
+
+  const totalSceneCards = sceneCards.length;
   return (
-    <div style={{ width: '100vw', height: '100vh', backgroundColor: '#020204', position: 'relative' }}>
-      <Canvas camera={{ position: [-(CAMERA_RANGE / 2), 0, 18], fov: 45 }} dpr={[1, 1.25]}>
+    <div className="app-shell">
+      <div className="scene-ambient" aria-hidden="true" />
+      <div className="scene-vignette" aria-hidden="true" />
+      <Canvas
+        camera={{ position: [-(CAMERA_RANGE / 2), 0, 18], fov: 45 }}
+        dpr={[1, 1.25]}
+        gl={{ antialias: true, alpha: true }}
+        style={{ position: 'relative', zIndex: 1, background: 'transparent' }}
+      >
         <ambientLight intensity={0.4} />
         <directionalLight position={[10, 10, 10]} intensity={0.8} />
         <directionalLight position={[-10, -5, -10]} intensity={0.3} />
 
           <ScrollControls pages={TOTAL_PAGES} horizontal damping={0.15} enabled={!journey} style={{ zIndex: 3 }}>
             <Galaxy length={DNA_LENGTH * 1.5} />
-            <DNAHelix journey={journey} mouseYRef={mouseYRef} />
+            <HoverParallax mouseXRef={mouseXRef} mouseYRef={mouseYRef}>
+              <DNAHelix journey={journey} mouseYRef={mouseYRef} />
+
+              {sceneCards.map((card, i) => (
+                <OrbitingCard
+                  key={`${activeView}-${card.kind}-${i}`}
+                  title={card.title}
+                  subtitle={card.subtitle}
+                  color={card.color}
+                  items={card.items}
+                  stairIndex={card.stairIndex}
+                  totalCards={totalSceneCards}
+                  journey={journey}
+                  view={activeView}
+                  kind={card.kind}
+                  onSelect={() => setJourney({ card: i })}
+                  selectedIndex={selectedOption && selectedOption.card === i ? selectedOption.option : null}
+                  onOptionClick={(opt) => { suppressDocClickRef.current = true; setSelectedOption((prev) => (prev ? null : { card: i, option: opt })); }}
+                  onSubClick={(opt) => { suppressDocClickRef.current = true; setSelectedOption((prev) => (prev ? null : { card: 0, option: opt })); }}
+                />
+              ))}
+
+              {selectedOption && sphereData[selectedOption.card] && (
+                <DetailPanel
+                  key={selectedOption.card + '-' + selectedOption.option}
+                  item={sphereData[selectedOption.card].items[selectedOption.option]}
+                  category={sphereData[selectedOption.card].title}
+                  color={sphereData[selectedOption.card].color}
+                  follow={!journey}
+                />
+              )}
+            </HoverParallax>
             <CameraTracker length={CAMERA_RANGE} journey={journey} mouseXRef={mouseXRef} mouseYRef={mouseYRef} />
 
-            {sphereData.map((s, i) => (
-              <OrbitingCard key={i} title={s.title} subtitle={s.subtitle} color={s.color} items={s.items} stairIndex={s.stairIndex} totalCards={4} journey={journey} onSelect={() => setJourney({ card: i })} selectedIndex={selectedOption && selectedOption.card === i ? selectedOption.option : null} onOptionClick={(opt) => { suppressDocClickRef.current = true; setSelectedOption((prev) => (prev ? null : { card: i, option: opt })); }} />
-            ))}
+          <Scroll html style={{ width: '100vw', height: '100vh', pointerEvents: journey ? 'none' : 'auto' }}>
 
-            {selectedOption && sphereData[selectedOption.card] && (
-              <DetailPanel
-                key={selectedOption.card + '-' + selectedOption.option}
-                item={sphereData[selectedOption.card].items[selectedOption.option]}
-                category={sphereData[selectedOption.card].title}
-                color={sphereData[selectedOption.card].color}
-              />
-            )}
-
-            <Scroll html style={{ width: '100vw', height: '100vh', pointerEvents: journey ? 'none' : 'auto' }}>
-
-              {/* 1. TITLE */}
-              <ScrollSection
-                scrollStart={0}
-                scrollEnd={0.14}
-                style={{
-                  position: 'absolute',
-                  top: '38vh',
-                  left: '0vw',
-                  width: '100vw',
-                  textAlign: 'center',
-                  color: 'white',
-                  zIndex: 10,
-                }}
-              >
-                <h1 className="hero-title">Cosmi Chameleon</h1>
-                <div className="hero-subtitle-line" />
-              </ScrollSection>
+              <HeroLogoSection />
 
               {/* 2. ADAPT TRANSFORM DOMINATE (DNA breaks) */}
               <ScrollSection
@@ -1303,9 +2346,9 @@ export default function App() {
                       scrollEnd={0.24}
                       progressRef={adaptProgressRef}
                       blocks={[
-                        { num: '01', word: 'Adapt', desc: 'We watch the market closely, read the signals early, and shift before the wave even begins to move.' },
-                        { num: '02', word: 'Transform', desc: 'We rebuild your presence into something sharper, faster, more engaging, and built to win.' },
-                        { num: '03', word: 'Dominate', desc: 'Consistent systems and creative edge put you ahead of the competition and keep you there.' },
+                        { word: 'Adapt', desc: 'We watch the market closely, read the signals early, and shift before the wave even begins to move.' },
+                        { word: 'Transform', desc: 'We rebuild your presence into something sharper, faster, more engaging, and built to win.' },
+                        { word: 'Dominate', desc: 'Consistent systems and creative edge put you ahead of the competition and keep you there.' },
                       ]}
                     />
                   </div>
@@ -1328,19 +2371,7 @@ export default function App() {
               >
                 <div className="image-section image-section-launch image-section-full">
                   <div className="image-placeholder image-placeholder-3">
-                    <ParticleBg color="0, 229, 255" count={360} linkDistance={95} />
-                    <AnimateWords>
-                      <div className="image-block">
-                        <span className="image-label">Launch</span>
-                      </div>
-                      <div className="image-block">
-                        <span className="image-label">Your</span>
-                      </div>
-                      <div className="image-block">
-                        <span className="image-label">Evolution</span>
-                      </div>
-                      <p className="image-caption">The future starts here</p>
-                    </AnimateWords>
+                    <LaunchEvolutionStage scrollStart={0.8} scrollEnd={1.0} />
                   </div>
                 </div>
               </ScrollSection>
@@ -1348,9 +2379,27 @@ export default function App() {
             </Scroll>
           </ScrollControls>
       </Canvas>
+      <div className="hero-brand" aria-label="Cosmichameleon">
+        <img className="hero-logo" src="/hero-logo.png" alt="Cosmichameleon" />
+        <div className="hero-subtitle-line" />
+      </div>
       {journey && (
         <button className="journey-back" onClick={() => { setSelectedOption(null); setJourney(null); }}>Back</button>
       )}
+      <div className="view-switcher">
+        <button
+          className={`view-btn ${activeView === 'services' ? 'active' : ''}`}
+          onClick={() => { setSelectedOption(null); setJourney(null); setActiveView('services'); }}
+        >
+          Our Services
+        </button>
+        <button
+          className={`view-btn ${activeView === 'products' ? 'active' : ''}`}
+          onClick={() => { setSelectedOption(null); setJourney(null); setActiveView('products'); }}
+        >
+          Our Products
+        </button>
+      </div>
     </div>
   );
 }

@@ -28,7 +28,7 @@ function makeSprite(color, layer, boost = 1) {
     return canvas;
 }
 
-export default function ParticleBg({ color = '136, 204, 255', count = 60, linkDistance = 130, progressRef = null }) {
+export default function ParticleBg({ color = '136, 204, 255', count = 60, linkDistance = 130, progressRef = null, opacity = 1 }) {
     const canvasRef = useRef();
     const mouse = useRef({ x: -9999, y: -9999 });
 
@@ -193,7 +193,7 @@ export default function ParticleBg({ color = '136, 204, 255', count = 60, linkDi
         };
     }, [color, count, linkDistance, progressRef]);
 
-    return (
+        return (
         <canvas
             ref={canvasRef}
             style={{
@@ -202,6 +202,7 @@ export default function ParticleBg({ color = '136, 204, 255', count = 60, linkDi
                 left: 0,
                 pointerEvents: 'none',
                 zIndex: 0,
+                opacity,
             }}
         />
     );
