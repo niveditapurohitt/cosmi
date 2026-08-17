@@ -3,15 +3,23 @@ import { useFrame } from '@react-three/fiber';
 import { useScroll } from '@react-three/drei';
 import * as THREE from 'three';
 
+const smoothstep = (a, b, x) => {
+    const u = THREE.MathUtils.clamp((x - a) / Math.max(0.0001, b - a), 0, 1);
+    return u * u * (3 - 2 * u);
+};
+
 const circleTexture = (() => {
     const canvas = document.createElement('canvas');
     canvas.width = 64;
     canvas.height = 64;
     const ctx = canvas.getContext('2d');
-    ctx.beginPath();
-    ctx.arc(32, 32, 30, 0, Math.PI * 2);
-    ctx.fillStyle = '#ffffff';
-    ctx.fill();
+    const grad = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+    grad.addColorStop(0, 'rgba(255,255,255,1)');
+    grad.addColorStop(0.45, 'rgba(255,255,255,0.8)');
+    grad.addColorStop(0.75, 'rgba(255,255,255,0.18)');
+    grad.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 64, 64);
     return new THREE.CanvasTexture(canvas);
 })();
 
@@ -19,11 +27,12 @@ export default function ActiveDNA({ length = 100, breaks = [] }) {
     const groupRef = useRef();
     const scroll = useScroll();
     const currentScale = useRef(1);
+    const blurScale = useRef(0);
 
     const radius = 3.5;
-    const twists = 5;
-    const pointsPerStrand = 180;
-    const maxLinesPerStrand = 3000;
+    const twists = Math.max(1, Math.round(length / 10));
+    const pointsPerStrand = Math.round(length * 3);
+    const maxLinesPerStrand = Math.max(3000, pointsPerStrand * 30);
 
     const { strand1Particles, strand2Particles, s1Colors, s2Colors } = useMemo(() => {
         const s1 = []; const s2 = [];
@@ -84,6 +93,9 @@ export default function ActiveDNA({ length = 100, breaks = [] }) {
 
     useFrame((state) => {
         const t = state.clock.getElapsedTime();
+        const offset = scroll ? scroll.offset : 0;
+        const blurTarget = smoothstep(0.08, 0.14, offset) * (1 - smoothstep(0.22, 0.29, offset));
+        blurScale.current = THREE.MathUtils.lerp(blurScale.current, blurTarget, 0.08);
 
         const updateStrand = (particles, positionsArray, linesArray, pointsGeo, linesGeo) => {
             let lineCount = 0; const thresholdSq = 1.5 * 1.5;
@@ -144,6 +156,23 @@ export default function ActiveDNA({ length = 100, breaks = [] }) {
             currentScale.current = THREE.MathUtils.lerp(currentScale.current, targetScale, 0.08);
             groupRef.current.scale.setScalar(currentScale.current);
         }
+
+        if (groupRef.current) {
+            groupRef.current.traverse((o) => {
+                if (!o.material) return;
+                if (o.userData.baseOp === undefined) o.userData.baseOp = o.material.opacity;
+                if (o.userData.baseSize === undefined && o.material.size !== undefined) o.userData.baseSize = o.material.size;
+
+                if (o.material.size !== undefined && o.userData.baseSize !== undefined) {
+                    o.material.size = o.userData.baseSize * (1 + blurScale.current * 0.75);
+                }
+
+                const blurOpacity = o.material.size !== undefined
+                    ? (0.7 + blurScale.current * 0.3)
+                    : (0.45 + blurScale.current * 0.35);
+                o.material.opacity = o.userData.baseOp * blurOpacity;
+            });
+        }
     });
 
     return (
@@ -167,7 +196,6 @@ export default function ActiveDNA({ length = 100, breaks = [] }) {
             <lineSegments geometry={geoS2Lines}>
                 <lineBasicMaterial color="#ff4488" transparent opacity={0.4} blending={THREE.AdditiveBlending} depthWrite={false} />
             </lineSegments>
-
-            </group>
-        );
-    }
+        </group>
+    );
+}

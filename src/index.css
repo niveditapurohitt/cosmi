@@ -54,6 +54,14 @@ body {
         inset 0 0 260px rgba(0, 0, 0, 0.35);
 }
 
+.scene-canvas-wrap {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    height: 100%;
+    will-change: filter;
+}
+
 h1 {
     font-family: 'Playfair Display', serif;
     font-weight: 700;
