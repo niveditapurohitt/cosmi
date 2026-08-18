@@ -100,7 +100,7 @@ export default function ActiveDNA({ length = 100, breaks = [] }) {
         const updateStrand = (particles, positionsArray, linesArray, pointsGeo, linesGeo) => {
             let lineCount = 0; const thresholdSq = 1.5 * 1.5;
 
-            const windowSize = 25;
+            const windowSize = 14;
 
             for (let i = 0; i < particles.length; i++) {
                 const p = particles[i];
