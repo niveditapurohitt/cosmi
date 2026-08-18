@@ -36,6 +36,24 @@ function resolveAccent(accent, index = 0) {
   return accent;
 }
 
+const glitchScanTexture = (() => {
+  const canvas = document.createElement('canvas');
+  canvas.width = 16;
+  canvas.height = 256;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, 16, 256);
+  for (let y = 0; y < 256; y++) {
+    ctx.fillStyle = Math.random() < 0.5 ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.75)';
+    ctx.fillRect(0, y, 16, Math.max(1, 2 + Math.random() * 10));
+    y += 2 + Math.random() * 8;
+  }
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(1, 3);
+  return tex;
+})();
+
 function makeCardTexture(title, subtitle, accent, items = null) {
   const canvas = document.createElement('canvas');
   canvas.width = 512;
@@ -447,19 +465,6 @@ function CameraTracker({ length, journey, mouseXRef, mouseYRef }) {
     }
   });
   return null;
-}
-
-function HoverParallax({ mouseXRef, mouseYRef, children }) {
-  const ref = useRef();
-  useFrame((state, delta) => {
-    if (!ref.current) return;
-    const k = 1 - Math.exp(-delta * 4);
-    const px = mouseXRef.current || 0;
-    const py = mouseYRef.current || 0;
-    ref.current.position.x = THREE.MathUtils.lerp(ref.current.position.x, px * 1.4, k);
-    ref.current.position.y = THREE.MathUtils.lerp(ref.current.position.y, py * 1.2, k);
-  });
-  return <group ref={ref}>{children}</group>;
 }
 
 function AnimateWords({ children }) {
@@ -1243,6 +1248,208 @@ function useDetailTexture(item, category, accent) {
   return tex;
 }
 
+function makeGlitchInfoTexture(title, subtitle, accent, items = []) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1000;
+  canvas.height = 1300;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, 1000, 1300);
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  const bg = ctx.createLinearGradient(0, 0, 0, 1300);
+  bg.addColorStop(0, 'rgba(10, 14, 20, 1)');
+  bg.addColorStop(1, 'rgba(4, 6, 11, 1)');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, 1000, 1300);
+
+  ctx.save();
+  const path = () => {
+    ctx.beginPath();
+    ctx.moveTo(40 + 22, 40);
+    ctx.arcTo(960, 40, 960, 1260, 22);
+    ctx.arcTo(960, 1260, 40, 1260, 22);
+    ctx.arcTo(40, 1260, 40, 40, 22);
+    ctx.arcTo(40, 40, 960, 40, 22);
+    ctx.closePath();
+  };
+  path();
+  ctx.clip();
+
+  const randN = (a, b) => a + Math.random() * (b - a);
+  const pts = [];
+  for (let i = 0; i < 60; i++) pts.push({ x: randN(24, 976), y: randN(24, 1276) });
+  ctx.save();
+  ctx.strokeStyle = `rgba(${accent}, 0.14)`;
+  ctx.lineWidth = 1;
+  for (let i = 0; i < pts.length; i++) {
+    for (let j = i + 1; j < pts.length; j++) {
+      const dx = pts[i].x - pts[j].x;
+      const dy = pts[i].y - pts[j].y;
+      if (dx * dx + dy * dy < 16900) {
+        ctx.beginPath();
+        ctx.moveTo(pts[i].x, pts[i].y);
+        ctx.lineTo(pts[j].x, pts[j].y);
+        ctx.stroke();
+      }
+    }
+  }
+  ctx.fillStyle = `rgba(${accent}, 0.5)`;
+  for (const p of pts) {
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 2.2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+
+  ctx.strokeStyle = `rgba(${accent}, 0.45)`;
+  ctx.lineWidth = 1.5;
+  path();
+  ctx.stroke();
+
+  ctx.fillStyle = `rgba(${accent}, 0.9)`;
+  ctx.fillRect(40, 40, 920, 3);
+
+  ctx.font = '500 28px "Fredoka"';
+  ctx.fillStyle = `rgba(${accent}, 0.9)`;
+  ctx.fillText(String(subtitle || 'Cosmichameleon').toUpperCase(), 500, 120);
+
+  ctx.font = '600 64px "Fredoka"';
+  const maxW = 840;
+  let t = title || 'Cosmichameleon';
+  let ts = 64;
+  ctx.font = `600 ${ts}px "Fredoka"`;
+  while (ctx.measureText(t).width > maxW && ts > 30) {
+    ts -= 2;
+    ctx.font = `600 ${ts}px "Fredoka"`;
+  }
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,0,0,0.75)';
+  ctx.shadowBlur = 16;
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText(t, 500, 250);
+  ctx.restore();
+
+  ctx.fillStyle = `rgba(${accent}, 0.9)`;
+  ctx.fillRect(400, 330, 200, 4);
+
+  const list = Array.isArray(items) && items.length ? items : [];
+  if (list.length) {
+    const y0 = 460;
+    const rowH = 92;
+    list.slice(0, 6).forEach((it, i) => {
+      const y = y0 + i * rowH;
+      const grad = ctx.createLinearGradient(70, y - 30, 930, y + 30);
+      grad.addColorStop(0, 'rgba(16, 22, 32, 0.9)');
+      grad.addColorStop(1, 'rgba(7, 11, 18, 0.9)');
+      ctx.fillStyle = grad;
+      roundRect(ctx, 70, y - 30, 860, 60, 14);
+      ctx.fill();
+      ctx.strokeStyle = `rgba(${accent}, 0.22)`;
+      ctx.lineWidth = 1;
+      roundRect(ctx, 70, y - 30, 860, 60, 14);
+      ctx.stroke();
+      ctx.fillStyle = `rgba(${accent}, 0.95)`;
+      ctx.beginPath();
+      ctx.arc(110, y, 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.textAlign = 'left';
+      ctx.font = '500 34px "Fredoka"';
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(String(it.title || ''), 140, y - 12);
+      ctx.font = '400 22px "Fredoka"';
+      ctx.fillStyle = 'rgba(255,255,255,0.7)';
+      const tl = wrapText(ctx, it.text || '', 820).slice(0, 1);
+      tl.forEach((ln, j) => ctx.fillText(ln, 140, y + 16 + j * 28));
+      ctx.textAlign = 'center';
+    });
+  } else {
+    ctx.font = '400 40px "Fredoka"';
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.fillText(String(subtitle || title || ''), 500, 620);
+  }
+
+  ctx.strokeStyle = `rgba(${accent}, 0.3)`;
+  ctx.lineWidth = 1;
+  ctx.setLineDash([6, 8]);
+  ctx.beginPath();
+  ctx.moveTo(200, 1190);
+  ctx.lineTo(800, 1190);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.font = '500 26px "Fredoka"';
+  ctx.fillStyle = 'rgba(255,255,255,0.45)';
+  ctx.fillText('Cosmichameleon', 500, 1245);
+
+  ctx.restore();
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.needsUpdate = true;
+  return texture;
+}
+
+const glitchInfoCache = new WeakMap();
+const glitchInfoArrayCache = new WeakMap();
+
+function useGlitchInfoTextures(items, accents) {
+  const [texs, setTexs] = useState([]);
+  const accentKey = Array.isArray(accents) ? accents.join('|') : accents;
+
+  useEffect(() => {
+    let cancelled = false;
+    const draw = () => {
+      if (cancelled) return;
+      let byAccent = glitchInfoArrayCache.get(items);
+      if (!byAccent) {
+        byAccent = new Map();
+        glitchInfoArrayCache.set(items, byAccent);
+      }
+      let entry = byAccent.get(accentKey);
+      if (!entry) {
+        entry = items.map((it, i) =>
+          makeGlitchInfoTexture(it.title, String(it.tag || ''), resolveAccent(accents, i), [])
+        );
+        byAccent.set(accentKey, entry);
+      }
+      setTexs(entry);
+    };
+    Promise.all([
+      document.fonts.load('600 64px "Fredoka"'),
+      document.fonts.load('500 34px "Fredoka"'),
+      document.fonts.load('400 22px "Fredoka"'),
+      document.fonts.ready,
+    ]).then(draw).catch(draw);
+    return () => { cancelled = true; };
+  }, [items, accentKey]);
+
+  return texs;
+}
+
+function useGlitchInfoTexture(title, subtitle, accent, items = []) {
+  const [tex, setTex] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const draw = () => {
+      if (cancelled) return;
+      let entry = glitchInfoCache.get(items);
+      if (!entry || entry.title !== title || entry.subtitle !== subtitle || entry.accent !== accent) {
+        entry = { title, subtitle, accent, tex: makeGlitchInfoTexture(title, subtitle, accent, items) };
+        glitchInfoCache.set(items, entry);
+      }
+      setTex(entry.tex);
+    };
+    Promise.all([
+      document.fonts.load('600 64px "Fredoka"'),
+      document.fonts.load('500 34px "Fredoka"'),
+      document.fonts.load('400 22px "Fredoka"'),
+      document.fonts.ready,
+    ]).then(draw).catch(draw);
+    return () => { cancelled = true; };
+  }, [title, subtitle, accent, items]);
+
+  return tex;
+}
+
 function OrbitingCard({ title, subtitle, color, items, stairIndex, totalCards, journey, view, kind = 'default', onSelect, selectedIndex, onOptionClick, onSubClick }) {
   const groupRef = useRef();
   const meshRef = useRef();
@@ -1262,34 +1469,37 @@ const optionTextRefs = useRef([]);
 const subTextRefs = useRef([]);
   const subHoverRef = useRef([]);
   const selectedRef = useRef(null);
-  const scroll = useScroll();
+const scroll = useScroll();
   const hoverRef = useRef(false);
   const angleRef = useRef(0);
   const scaleRef = useRef(0.0001);
   const posXRef = useRef(0);
   const posYZRef = useRef({ y: 0, z: 0 });
   const rotYRef = useRef(0);
+  const nearVideoRef = useRef(true);
+  const [nearVideo, setNearVideo] = React.useState(true);
   const isServiceTitleBoost = true;
 
 const worldX = view === 'default'
-    ? -25 + stairIndex * 12.5
-    : -22 + stairIndex * 12.5;
-  const orbitRadius = 5.6;
+    ? -25 + stairIndex * 10
+    : -22 + stairIndex * 10;
+  const orbitRadius = 4.2;
   const entryStart = -0.12;
   const entryDur = 0.07;
   const flyIn = 6;
-  const JOURNEY_CARD_SCALE = 1.3;
-  const OPTION_ROW = 4.9;
-  const OPTION_COL = 14;
-  const OPTION_SIZE = [4.7, 3.3];
-  const OPTION_CARD_DEPTH = 0.3;
-  const SUB_CARD_SIZE = [4.7, 3.3];
-  const SUB_CARD_SCALE = 0.7;
-  const SUB_CARD_SPREAD = 42;
-  const SUB_CARD_OFFSET = 19;
-  const SUB_CARD_DEPTH = 0.3;
-  const SUB_ORBIT_RADIUS = 6.7;
-  const cardsClickable = false;
+  const JOURNEY_CARD_SCALE = 1.1;
+  const OPTION_ROW = 3.7;
+  const OPTION_COL = 10.5;
+  const OPTION_SIZE = [3.5, 2.5];
+  const OPTION_CARD_DEPTH = 0.24;
+  const SUB_CARD_SIZE = [3.5, 2.5];
+  const SUB_CARD_SCALE = 1;
+  const SUB_CARD_STEP = 10;
+  const SUB_CARD_OFFSET = 14;
+  const SUB_CARD_DEPTH = 0.24;
+const SUB_ORBIT_RADIUS = 4.2;
+  const cardsClickable = true;
+  const VIDEO_NEAR_RANGE = 18;
   const serviceItemAccents = React.useMemo(
     () => (kind === 'service' ? items.map((_, i) => SERVICE_ITEM_COLORS[i % SERVICE_ITEM_COLORS.length]) : null),
     [kind, items]
@@ -1316,12 +1526,60 @@ const optionTexs = useOptionTextures(items, color);
     () => items.map((_, i) => videoAt(i + 1)),
     [items, shuffledVideos, slotBase]
   );
+  const revealTex = useGlitchInfoTexture(title, subtitle, kind === 'default' ? color : serviceItemAccents?.[0] || color, items);
+
+  const [revealed, setRevealed] = React.useState(false);
+  const revealedRef = useRef(false);
+  const glitchRef = useRef(0);
+  const glitchDirRef = useRef(1);
+  const glitchActiveRef = useRef(false);
+  const revealRef = useRef();
+  const ghostRRef = useRef();
+  const ghostBRef = useRef();
+  const ghostScanRef = useRef();
+
+  const subRevealTexs = useGlitchInfoTextures(items, serviceItemAccents || color);
+  const subRevealedRefs = useRef([]);
+  const subRevealRefs = useRef([]);
+  const subGlitchRefs = useRef([]);
+  const subGlitchActiveRefs = useRef([]);
+  const subGhostRRefs = useRef([]);
+  const subGhostBRefs = useRef([]);
+  const subGhostScanRefs = useRef([]);
+
+  const toggleRevealed = () => {
+    if (isJourneying) return;
+    setRevealed((prev) => {
+      const next = !prev;
+      revealedRef.current = next;
+      glitchDirRef.current = next ? 1 : -1;
+      glitchRef.current = 0;
+      glitchActiveRef.current = true;
+      return next;
+    });
+  };
+
+  const toggleSubRevealed = (i) => {
+    if (isJourneying) return;
+    const next = !subRevealedRefs.current[i];
+    subRevealedRefs.current[i] = next;
+    subGlitchRefs.current[i] = 0;
+    subGlitchActiveRefs.current[i] = true;
+  };
 
   useEffect(() => {
     selectedRef.current = selectedIndex;
     for (let i = 0; i < optionHoverRef.current.length; i++) optionHoverRef.current[i] = false;
     document.body.style.cursor = 'auto';
   }, [selectedIndex]);
+
+  useEffect(() => {
+    if (!items.length) return;
+    subRevealedRefs.current = items.map((_, i) => !!subRevealedRefs.current[i]);
+    subRevealRefs.current = items.map((_, i) => subRevealRefs.current[i] || null);
+    subGlitchRefs.current = items.map((_, i) => subGlitchRefs.current[i] || 0);
+    subGlitchActiveRefs.current = items.map((_, i) => subGlitchActiveRefs.current[i] || false);
+  }, [items]);
 
   useEffect(() => {
     hoverRef.current = false;
@@ -1333,12 +1591,18 @@ const optionTexs = useOptionTextures(items, color);
   const isJourneyTarget = isJourneying && journey.card === stairIndex;
   const isServicesMode = view === 'services' && stairIndex === 0;
   const mirrorSign = stairIndex >= 2 ? -1 : 1;
-  const mainVideoActive = !isServicesMode && !isJourneying;
-  const subVideosActive = isServicesMode && !isJourneying;
-  const optionVideosActive = isJourneyTarget;
+const mainVideoActive = !isServicesMode && !isJourneying && !revealed && nearVideo;
+  const subVideosActive = isServicesMode && !isJourneying && nearVideo;
+  const optionVideosActive = isJourneyTarget && nearVideo;
 
   useFrame((state, delta) => {
     if (!groupRef.current || !meshRef.current) return;
+
+    const nearNow = Math.abs(state.camera.position.x - worldX) < VIDEO_NEAR_RANGE || isJourneying;
+    if (nearNow !== nearVideoRef.current) {
+      nearVideoRef.current = nearNow;
+      setNearVideo(nearNow);
+    }
 
     if (isJourneying) {
       for (let i = 0; i < subRefs.current.length; i++) {
@@ -1547,7 +1811,7 @@ if (subBodyRefs.current[i]) subBodyRefs.current[i].visible = false;
     const angle = angleRef.current;
 
     const orbitY = Math.sin(angle) * orbitRadius;
-    const orbitZ = Math.cos(angle) * orbitRadius * 0.6;
+    const orbitZ = Math.abs(Math.cos(angle)) * orbitRadius * 0.9;
 
     posXRef.current = THREE.MathUtils.lerp(posXRef.current, worldX, 0.1);
     rotYRef.current = THREE.MathUtils.lerp(rotYRef.current, 0, 0.1);
@@ -1584,10 +1848,10 @@ const t = subTextRefs.current[i];
         const phase = (i / count) * Math.PI * 2;
         const subVisual = phase - dnaRotation;
         const centeredIndex = i - (count - 1) / 2;
-        const subLocalX = (count > 1 ? (centeredIndex / (count - 1)) * SUB_CARD_SPREAD : 0) + SUB_CARD_OFFSET;
+        const subLocalX = (count > 1 ? centeredIndex * SUB_CARD_STEP : 0) + SUB_CARD_OFFSET;
         g.position.x = THREE.MathUtils.lerp(g.position.x, subLocalX, 0.09);
         g.position.y = THREE.MathUtils.lerp(g.position.y, Math.sin(subVisual) * SUB_ORBIT_RADIUS, 0.09);
-        g.position.z = THREE.MathUtils.lerp(g.position.z, Math.cos(subVisual) * SUB_ORBIT_RADIUS * 0.6, 0.09);
+        g.position.z = THREE.MathUtils.lerp(g.position.z, Math.cos(subVisual) * SUB_ORBIT_RADIUS * 0.9, 0.09);
         const rotTarget = -subVisual;
         let rDiff = rotTarget - g.rotation.x;
         rDiff = ((rDiff + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
@@ -1637,9 +1901,9 @@ t.scale.z = THREE.MathUtils.lerp(t.scale.z, textScale, 0.12);
       const targetScale = baseScale * (hoverRef.current ? 1.1 : 1);
       scaleRef.current = THREE.MathUtils.lerp(scaleRef.current, targetScale, 0.12);
       groupRef.current.scale.setScalar(Math.max(0.0001, scaleRef.current));
-      if (mainFaceRef.current) mainFaceRef.current.visible = true;
-if (mainTitleBackRef.current) mainTitleBackRef.current.visible = true;
-      if (mainTitleRef.current) mainTitleRef.current.visible = true;
+      if (mainFaceRef.current) mainFaceRef.current.visible = !revealedRef.current;
+ if (mainTitleBackRef.current) mainTitleBackRef.current.visible = !revealedRef.current;
+      if (mainTitleRef.current) mainTitleRef.current.visible = !revealedRef.current;
       if (mainFaceTexs.normal && mainFaceRef.current && mainFaceRef.current.material.map !== mainFaceTexs.normal) {
         mainFaceRef.current.material.map = mainFaceTexs.normal;
         mainFaceRef.current.material.needsUpdate = true;
@@ -1663,6 +1927,132 @@ if (mainTitleBackRef.current) mainTitleBackRef.current.visible = true;
 mainTitleRef.current.material.opacity = THREE.MathUtils.lerp(mainTitleRef.current.material.opacity, eased, 0.1);
       }
     }
+
+    if (glitchActiveRef.current) {
+      glitchRef.current = Math.min(1, glitchRef.current + delta / 0.85);
+      if (glitchRef.current >= 1) {
+        glitchActiveRef.current = false;
+        glitchRef.current = 0;
+      }
+    }
+
+    const gt = glitchRef.current;
+    const glitchIntensity = gt > 0
+      ? (glitchDirRef.current > 0 ? Math.sin(gt * Math.PI) : Math.sin(gt * Math.PI))
+      : 0;
+
+    if (revealRef.current) {
+      const want = revealedRef.current ? 1 : 0;
+      const flicker = glitchIntensity > 0 ? (Math.random() > 0.35 ? 1 : 0) : 1;
+      revealRef.current.material.opacity = THREE.MathUtils.lerp(
+        revealRef.current.material.opacity,
+        want * flicker,
+        glitchIntensity > 0 ? 0.9 : 0.12
+      );
+      revealRef.current.visible = revealRef.current.material.opacity > 0.01;
+      if (glitchIntensity > 0) {
+        revealRef.current.position.x = (Math.random() - 0.5) * 0.12 * glitchIntensity;
+        revealRef.current.position.y = (Math.random() - 0.5) * 0.1 * glitchIntensity;
+      } else {
+        revealRef.current.position.x = THREE.MathUtils.lerp(revealRef.current.position.x, 0, 0.1);
+        revealRef.current.position.y = THREE.MathUtils.lerp(revealRef.current.position.y, 0, 0.1);
+      }
+    }
+
+    if (ghostRRef.current && ghostBRef.current && ghostScanRef.current) {
+      const on = glitchIntensity > 0.02;
+      ghostRRef.current.visible = on;
+      ghostBRef.current.visible = on;
+      ghostScanRef.current.visible = on;
+      if (on) {
+        const jx = (Math.random() - 0.5) * 0.2 * glitchIntensity;
+        ghostRRef.current.position.x = jx;
+        ghostBRef.current.position.x = -jx;
+        ghostRRef.current.material.opacity = 0.5 * glitchIntensity * (Math.random() > 0.4 ? 1 : 0.2);
+        ghostBRef.current.material.opacity = 0.5 * glitchIntensity * (Math.random() > 0.4 ? 1 : 0.2);
+        ghostScanRef.current.material.opacity = 0.35 * glitchIntensity;
+        ghostScanRef.current.material.map.offset.y = (Math.random() * 2 - 1) * glitchIntensity * 2;
+      } else {
+        ghostRRef.current.material.opacity = 0;
+        ghostBRef.current.material.opacity = 0;
+        ghostScanRef.current.material.opacity = 0;
+        ghostRRef.current.position.x = 0;
+        ghostBRef.current.position.x = 0;
+      }
+    }
+
+    for (let i = 0; i < subRefs.current.length; i++) {
+      const sg = subRefs.current[i];
+      if (!sg) continue;
+      if (subGlitchActiveRefs.current[i]) {
+        subGlitchRefs.current[i] = Math.min(1, subGlitchRefs.current[i] + delta / 0.85);
+        if (subGlitchRefs.current[i] >= 1) {
+          subGlitchActiveRefs.current[i] = false;
+          subGlitchRefs.current[i] = 0;
+        }
+      }
+      const sgt = subGlitchRefs.current[i];
+      const si = sgt > 0 ? Math.sin(sgt * Math.PI) : 0;
+      const sReveal = subRevealedRefs.current[i];
+      const sTex = subRevealTexs[i];
+
+      if (si > 0 && sg) {
+        sg.position.x += (Math.random() - 0.5) * 0.16 * si;
+        sg.position.y += (Math.random() - 0.5) * 0.12 * si;
+        sg.rotation.z += (Math.random() - 0.5) * 0.06 * si;
+      }
+
+      const sR = subGhostRRefs.current[i];
+      const sB = subGhostBRefs.current[i];
+      const sS = subGhostScanRefs.current[i];
+      if (sR && sB && sS) {
+        const on = si > 0.02;
+        sR.visible = on;
+        sB.visible = on;
+        sS.visible = on;
+        if (on) {
+          const jx = (Math.random() - 0.5) * 0.2 * si;
+          sR.position.x = jx;
+          sB.position.x = -jx;
+          sR.material.opacity = 0.5 * si * (Math.random() > 0.4 ? 1 : 0.2);
+          sB.material.opacity = 0.5 * si * (Math.random() > 0.4 ? 1 : 0.2);
+          sS.material.opacity = 0.35 * si;
+          sS.material.map.offset.y = (Math.random() * 2 - 1) * si * 2;
+        } else {
+          sR.material.opacity = 0;
+          sB.material.opacity = 0;
+          sS.material.opacity = 0;
+          sR.position.x = 0;
+          sB.position.x = 0;
+        }
+      }
+
+      const sRevealMesh = subRevealRefs.current[i];
+      if (sRevealMesh && sTex) {
+        const want = sReveal ? 1 : 0;
+        const flicker = si > 0 ? (Math.random() > 0.35 ? 1 : 0) : 1;
+        sRevealMesh.material.opacity = THREE.MathUtils.lerp(
+          sRevealMesh.material.opacity,
+          want * flicker,
+          si > 0 ? 0.9 : 0.12
+        );
+        sRevealMesh.visible = sRevealMesh.material.opacity > 0.01;
+        if (si > 0) {
+          sRevealMesh.position.x = (Math.random() - 0.5) * 0.12 * si;
+          sRevealMesh.position.y = (Math.random() - 0.5) * 0.1 * si;
+        } else {
+          sRevealMesh.position.x = THREE.MathUtils.lerp(sRevealMesh.position.x, 0, 0.1);
+          sRevealMesh.position.y = THREE.MathUtils.lerp(sRevealMesh.position.y, 0, 0.1);
+        }
+      }
+
+      const sFace = subFaceRefs.current[i];
+      if (sFace) sFace.visible = !sReveal;
+      const sT = subTextRefs.current[i];
+      if (sT) sT.visible = !sReveal;
+      const sTB = subTitleBackRefs.current[i];
+      if (sTB) sTB.visible = !sReveal;
+    }
   });
 
   return (
@@ -1682,10 +2072,10 @@ mainTitleRef.current.material.opacity = THREE.MathUtils.lerp(mainTitleRef.curren
           hoverRef.current = false;
           if (!optionHoverRef.current.some(Boolean)) document.body.style.cursor = 'auto';
         }}
-        onClick={(e) => {
+onClick={(e) => {
           if (!cardsClickable) return;
           e.stopPropagation();
-          if (!isJourneying) onSelect();
+          if (!isJourneying) toggleRevealed();
         }}
       >
         <boxGeometry args={[SUB_CARD_SIZE[0], SUB_CARD_SIZE[1], SUB_CARD_DEPTH]} />
@@ -1716,6 +2106,44 @@ mainTitleRef.current.material.opacity = THREE.MathUtils.lerp(mainTitleRef.curren
           >
             <planeGeometry args={[SUB_CARD_SIZE[0] * 1.0, SUB_CARD_SIZE[1] * 0.74]} />
             <meshBasicMaterial map={mainTitleTex} transparent opacity={0} side={THREE.DoubleSide} depthWrite={false} depthTest={false} toneMapped={false} />
+          </mesh>
+        )}
+        <mesh
+          ref={ghostRRef}
+          position={[0, 0, SUB_CARD_DEPTH / 2 + 0.045]}
+          renderOrder={12}
+          visible={false}
+        >
+          <planeGeometry args={SUB_CARD_SIZE} />
+          <meshBasicMaterial map={null} color="#ff2244" transparent opacity={0} side={THREE.DoubleSide} depthWrite={false} depthTest={false} blending={THREE.AdditiveBlending} toneMapped={false} />
+        </mesh>
+        <mesh
+          ref={ghostBRef}
+          position={[0, 0, SUB_CARD_DEPTH / 2 + 0.045]}
+          renderOrder={12}
+          visible={false}
+        >
+          <planeGeometry args={SUB_CARD_SIZE} />
+          <meshBasicMaterial map={null} color="#2288ff" transparent opacity={0} side={THREE.DoubleSide} depthWrite={false} depthTest={false} blending={THREE.AdditiveBlending} toneMapped={false} />
+        </mesh>
+        <mesh
+          ref={ghostScanRef}
+          position={[0, 0, SUB_CARD_DEPTH / 2 + 0.05]}
+          renderOrder={13}
+          visible={false}
+        >
+          <planeGeometry args={SUB_CARD_SIZE} />
+          <meshBasicMaterial map={glitchScanTexture} transparent opacity={0} side={THREE.DoubleSide} depthWrite={false} depthTest={false} blending={THREE.AdditiveBlending} toneMapped={false} />
+        </mesh>
+        {revealTex && (
+          <mesh
+            ref={(el) => { if (el) revealRef.current = el; }}
+            position={[0, 0, SUB_CARD_DEPTH / 2 + 0.04]}
+            renderOrder={11}
+            visible={false}
+          >
+            <planeGeometry args={SUB_CARD_SIZE} />
+            <meshBasicMaterial map={revealTex} transparent opacity={0} side={THREE.DoubleSide} depthWrite={false} toneMapped={false} />
           </mesh>
         )}
       </mesh>
@@ -1814,7 +2242,7 @@ mainTitleRef.current.material.opacity = THREE.MathUtils.lerp(mainTitleRef.curren
                 onClick={(e) => {
                   if (!cardsClickable) return;
                   e.stopPropagation();
-                  if (view === 'services' && !isJourneying) onSubClick(i);
+                  if (view === 'services' && !isJourneying) toggleSubRevealed(i);
                 }}
             >
               <mesh
@@ -1852,6 +2280,44 @@ mainTitleRef.current.material.opacity = THREE.MathUtils.lerp(mainTitleRef.curren
                   <meshBasicMaterial map={cardTextTexs.normal[i]} transparent opacity={0} side={THREE.DoubleSide} depthWrite={false} depthTest={false} toneMapped={false} />
                 </mesh>
               )}
+              <mesh
+                ref={(el) => { if (el) subGhostRRefs.current[i] = el; }}
+                position={[0, 0, SUB_CARD_DEPTH / 2 + 0.045]}
+                renderOrder={12}
+                visible={false}
+              >
+                <planeGeometry args={SUB_CARD_SIZE} />
+                <meshBasicMaterial color="#ff2244" transparent opacity={0} side={THREE.DoubleSide} depthWrite={false} depthTest={false} blending={THREE.AdditiveBlending} toneMapped={false} />
+              </mesh>
+              <mesh
+                ref={(el) => { if (el) subGhostBRefs.current[i] = el; }}
+                position={[0, 0, SUB_CARD_DEPTH / 2 + 0.045]}
+                renderOrder={12}
+                visible={false}
+              >
+                <planeGeometry args={SUB_CARD_SIZE} />
+                <meshBasicMaterial color="#2288ff" transparent opacity={0} side={THREE.DoubleSide} depthWrite={false} depthTest={false} blending={THREE.AdditiveBlending} toneMapped={false} />
+              </mesh>
+              <mesh
+                ref={(el) => { if (el) subGhostScanRefs.current[i] = el; }}
+                position={[0, 0, SUB_CARD_DEPTH / 2 + 0.05]}
+                renderOrder={13}
+                visible={false}
+              >
+                <planeGeometry args={SUB_CARD_SIZE} />
+                <meshBasicMaterial map={glitchScanTexture} transparent opacity={0} side={THREE.DoubleSide} depthWrite={false} depthTest={false} blending={THREE.AdditiveBlending} toneMapped={false} />
+              </mesh>
+              {subRevealTexs[i] && (
+                <mesh
+                  ref={(el) => { if (el) subRevealRefs.current[i] = el; }}
+                  position={[0, 0, SUB_CARD_DEPTH / 2 + 0.04]}
+                  renderOrder={11}
+                  visible={false}
+                >
+                  <planeGeometry args={SUB_CARD_SIZE} />
+                  <meshBasicMaterial map={subRevealTexs[i]} transparent opacity={0} side={THREE.DoubleSide} depthWrite={false} toneMapped={false} />
+                </mesh>
+              )}
             </group>
           ))}
         </group>
@@ -1884,23 +2350,23 @@ function DetailPanel({ item, category, color, follow = false }) {
 }
 
 const TOTAL_PAGES = 6;
-const DNA_LENGTH = 150;
-const CAMERA_RANGE = 165;
-const DNA_OFFSET = -15;
-const DNA_JOURNEY_SHIFT = 28;
+const DNA_LENGTH = 90;
+const CAMERA_RANGE = 100;
+const DNA_OFFSET = -9;
+const DNA_JOURNEY_SHIFT = 20;
 
-const JOURNEY_END_X = 105;
-const JOURNEY_CAM_X = 60;
+const JOURNEY_END_X = 80;
+const JOURNEY_CAM_X = 48;
 const JOURNEY_CAM_LOOK_Y = 0.7;
-const JOURNEY_WALK_SPEED = 30;
-const JOURNEY_CAM_ARRIVE = 50;
-const JOURNEY_LEFT_START = -70;
+const JOURNEY_WALK_SPEED = 26;
+const JOURNEY_CAM_ARRIVE = 42;
+const JOURNEY_LEFT_START = -60;
 
 const THUMB_NDC_X = -0.75;
 const THUMB_NDC_Y = 0.87;
-const THUMB_SCALE = 0.62;
-const THUMB_DEPTH = 42;
-const DETAIL_SIZE = [14, 17];
+const THUMB_SCALE = 0.5;
+const THUMB_DEPTH = 34;
+const DETAIL_SIZE = [11, 13];
 
 const _tVec = new THREE.Vector3();
 const _dirVec = new THREE.Vector3();
@@ -1918,8 +2384,6 @@ const CARD_VIDEO_SOURCES = [
   '/Woblo/sustainable-horizons-active-theory.video.sustainable_1_1.Woblo.mp4',
   '/Woblo/welcome-to-hogwarts-active-theory.video.video.Woblo.mp4',
 ];
-
-const sharedVideoTextureCache = new Map();
 
 function hashString(input) {
   let hash = 2166136261;
@@ -1941,6 +2405,42 @@ function seededShuffle(seed, arr) {
     a[j] = tmp;
   }
   return a;
+}
+
+const VIDEO_TEX_MAX_W = 384;
+const VIDEO_TEX_PULL_EVERY_FRAMES = 2;
+
+const sharedVideoTextureCache = new Map();
+const activeVideoEntries = new Set();
+let videoPullRAF = null;
+let videoPullAccum = 0;
+
+function pullActiveVideoFrames() {
+  videoPullAccum += 1;
+  if (videoPullAccum >= VIDEO_TEX_PULL_EVERY_FRAMES) {
+    videoPullAccum = 0;
+    for (const entry of activeVideoEntries) {
+      const v = entry.video;
+      if (v && v.readyState >= 2 && !v.paused) {
+        entry.ctx.drawImage(v, 0, 0, entry.canvas.width, entry.canvas.height);
+        entry.texture.needsUpdate = true;
+      }
+    }
+  }
+  videoPullRAF = requestAnimationFrame(pullActiveVideoFrames);
+}
+
+function startVideoPull() {
+  if (videoPullRAF === null) {
+    videoPullRAF = requestAnimationFrame(pullActiveVideoFrames);
+  }
+}
+
+function stopVideoPull() {
+  if (videoPullRAF !== null) {
+    cancelAnimationFrame(videoPullRAF);
+    videoPullRAF = null;
+  }
 }
 
 function useSharedVideoTexture(src, active = true) {
@@ -1977,16 +2477,36 @@ function useSharedVideoTexture(src, active = true) {
       video.style.pointerEvents = 'none';
       document.body.appendChild(video);
 
-      const videoTexture = new THREE.VideoTexture(video);
-      videoTexture.colorSpace = THREE.SRGBColorSpace;
-      videoTexture.minFilter = THREE.LinearFilter;
-      videoTexture.magFilter = THREE.LinearFilter;
-      videoTexture.generateMipmaps = false;
-      entry = { video, texture: videoTexture, activeCount: 0 };
+      const canvas = document.createElement('canvas');
+      canvas.width = VIDEO_TEX_MAX_W;
+      canvas.height = 216;
+      const ctx = canvas.getContext('2d');
+
+      const canvasTexture = new THREE.CanvasTexture(canvas);
+      canvasTexture.colorSpace = THREE.SRGBColorSpace;
+      canvasTexture.minFilter = THREE.LinearFilter;
+      canvasTexture.magFilter = THREE.LinearFilter;
+      canvasTexture.generateMipmaps = false;
+      entry = { video, canvas, ctx, texture: canvasTexture, activeCount: 0 };
+      entry.fitCanvas = () => {
+        if (video.videoWidth > 0 && video.videoHeight > 0) {
+          const aspect = video.videoWidth / video.videoHeight;
+          const w = VIDEO_TEX_MAX_W;
+          const h = Math.max(1, Math.round(w / aspect));
+          canvas.width = w;
+          canvas.height = h;
+          canvasTexture.needsUpdate = true;
+        }
+      };
       sharedVideoTextureCache.set(src, entry);
     }
     entry.activeCount += 1;
 
+    const drawFrame = () => {
+      if (!activeRef.current) return;
+      entry.ctx.drawImage(entry.video, 0, 0, entry.canvas.width, entry.canvas.height);
+      entry.texture.needsUpdate = true;
+    };
     const tryPlay = () => {
       if (!activeRef.current) return;
       const playResult = entry.video.play();
@@ -1994,23 +2514,28 @@ function useSharedVideoTexture(src, active = true) {
         playResult.catch(() => {});
       }
     };
-    const syncActive = () => {
+const syncActive = () => {
       if (activeRef.current) {
         tryPlay();
       } else {
         entry.video.pause();
       }
     };
-
-    entry.video.addEventListener('canplay', syncActive);
-    entry.video.addEventListener('loadeddata', syncActive);
-    entry.video.addEventListener('playing', syncActive);
-    entry.video.addEventListener('ended', syncActive);
-    entry.video.load();
     syncActive();
 
+    entry.video.addEventListener('canplay', syncActive);
+    entry.video.addEventListener('loadeddata', () => { entry.fitCanvas(); drawFrame(); syncActive(); });
+    entry.video.addEventListener('playing', syncActive);
+    entry.video.addEventListener('ended', syncActive);
+entry.__onPlaying = () => {
+        entry.fitCanvas();
+        entry.ctx.drawImage(entry.video, 0, 0, entry.canvas.width, entry.canvas.height);
+        entry.texture.needsUpdate = true;
+      };
+    entry.video.load();
+
     const resumeOnGesture = () => {
-      if (activeRef.current) tryPlay();
+      if (activeRef.current) { tryPlay(); drawFrame(); }
       window.removeEventListener('pointerdown', resumeOnGesture);
       window.removeEventListener('touchstart', resumeOnGesture);
     };
@@ -2030,6 +2555,9 @@ function useSharedVideoTexture(src, active = true) {
       entry.video.removeEventListener('loadeddata', syncActive);
       entry.video.removeEventListener('playing', syncActive);
       entry.video.removeEventListener('ended', syncActive);
+      entry.video.removeEventListener('playing', entry.__onPlaying);
+      activeVideoEntries.delete(entry);
+      if (activeVideoEntries.size === 0) stopVideoPull();
       window.removeEventListener('pointerdown', resumeOnGesture);
       window.removeEventListener('touchstart', resumeOnGesture);
     };
@@ -2040,12 +2568,23 @@ function useSharedVideoTexture(src, active = true) {
     const entry = sharedVideoTextureCache.get(src);
     if (!entry) return undefined;
     if (active) {
+      activeVideoEntries.add(entry);
+      startVideoPull();
+      entry.fitCanvas();
+      if (entry.video.readyState >= 2) {
+        entry.ctx.drawImage(entry.video, 0, 0, entry.canvas.width, entry.canvas.height);
+        entry.texture.needsUpdate = true;
+      }
       const playResult = entry.video.play();
       if (playResult && typeof playResult.catch === 'function') {
         playResult.catch(() => {});
       }
+      entry.video.addEventListener('playing', entry.__onPlaying);
     } else {
       entry.video.pause();
+      entry.video.removeEventListener('playing', entry.__onPlaying);
+      activeVideoEntries.delete(entry);
+      if (activeVideoEntries.size === 0) stopVideoPull();
     }
     return undefined;
   }, [src, active]);
@@ -2146,7 +2685,7 @@ const SERVICE_ITEM_COLORS = [
   '126, 255, 90',
 ];
 
-function DNAHelix({ journey, mouseYRef }) {
+function DNAHelix({ journey, mouseYRef, view }) {
   const ref = useRef();
   const fadeRef = useRef(1);
   const scroll = useScroll();
@@ -2158,11 +2697,11 @@ function DNAHelix({ journey, mouseYRef }) {
 
     const offset = scroll?.offset || 0;
     let sectionOpacity = 1;
-    if (offset >= 0.06 && offset < 0.12) {
+    if (view === 'default' && offset >= 0.06 && offset < 0.12) {
       sectionOpacity = 1 - smoothstep(0.06, 0.12, offset);
-    } else if (offset >= 0.12 && offset <= 0.24) {
+    } else if (view === 'default' && offset >= 0.12 && offset <= 0.24) {
       sectionOpacity = 0;
-    } else if (offset > 0.24 && offset <= 0.32) {
+    } else if (view === 'default' && offset > 0.24 && offset <= 0.32) {
       sectionOpacity = smoothstep(0.24, 0.32, offset);
     }
 
@@ -2287,11 +2826,9 @@ export default function App() {
           <directionalLight position={[-10, -5, -10]} intensity={0.3} />
 
           <ScrollControls pages={TOTAL_PAGES} horizontal damping={0.15} enabled={!journey} style={{ zIndex: 3 }}>
-            <Galaxy length={DNA_LENGTH * 1.5} />
-            <HoverParallax mouseXRef={mouseXRef} mouseYRef={mouseYRef}>
-              <DNAHelix journey={journey} mouseYRef={mouseYRef} />
-
-              {sceneCards.map((card, i) => (
+<Galaxy length={DNA_LENGTH * 1.5} />
+            <DNAHelix journey={journey} mouseYRef={mouseYRef} view={activeView} />
+            {sceneCards.map((card, i) => (
                 <OrbitingCard
                   key={`${activeView}-${card.kind}-${i}`}
                   title={card.title}
@@ -2307,7 +2844,7 @@ export default function App() {
                   selectedIndex={selectedOption && selectedOption.card === i ? selectedOption.option : null}
                   onOptionClick={(opt) => { suppressDocClickRef.current = true; setSelectedOption((prev) => (prev ? null : { card: i, option: opt })); }}
                   onSubClick={(opt) => { suppressDocClickRef.current = true; setSelectedOption((prev) => (prev ? null : { card: 0, option: opt })); }}
-                />
+/>
               ))}
 
               {selectedOption && sphereData[selectedOption.card] && (
@@ -2319,7 +2856,6 @@ export default function App() {
                   follow={!journey}
                 />
               )}
-            </HoverParallax>
             <CameraTracker length={CAMERA_RANGE} journey={journey} mouseXRef={mouseXRef} mouseYRef={mouseYRef} />
 
             <Scroll html style={{ width: '100vw', height: '100vh', pointerEvents: journey ? 'none' : 'auto' }}>
@@ -2327,35 +2863,37 @@ export default function App() {
               <HeroLogoSection />
 
               {/* 2. ADAPT TRANSFORM DOMINATE (DNA breaks) */}
-              <ScrollSection
-                scrollStart={0.08}
-                scrollEnd={0.24}
-                style={{
-                  position: 'absolute',
-                  top: '0vh',
-                  left: '80vw',
-                  width: '100vw',
-                  height: '100vh',
-                  textAlign: 'center',
-                  color: 'white',
-                }}
-              >
-                <div className="image-section image-section-adapt image-section-full">
-                  <div className="image-placeholder">
-                    <ParticleBg color="255, 140, 140" count={360} linkDistance={95} progressRef={adaptProgressRef} />
-                    <AdaptStage
-                      scrollStart={0.08}
-                      scrollEnd={0.24}
-                      progressRef={adaptProgressRef}
-                      blocks={[
-                        { word: 'Adapt', desc: 'We watch the market closely, read the signals early, and shift before the wave even begins to move.' },
-                        { word: 'Transform', desc: 'We rebuild your presence into something sharper, faster, more engaging, and built to win.' },
-                        { word: 'Dominate', desc: 'Consistent systems and creative edge put you ahead of the competition and keep you there.' },
-                      ]}
-                    />
+              {activeView === 'default' && (
+                <ScrollSection
+                  scrollStart={0.08}
+                  scrollEnd={0.24}
+                  style={{
+                    position: 'absolute',
+                    top: '0vh',
+                    left: '80vw',
+                    width: '100vw',
+                    height: '100vh',
+                    textAlign: 'center',
+                    color: 'white',
+                  }}
+                >
+                  <div className="image-section image-section-adapt image-section-full">
+                    <div className="image-placeholder">
+                      <ParticleBg color="255, 140, 140" count={360} linkDistance={95} progressRef={adaptProgressRef} />
+                      <AdaptStage
+                        scrollStart={0.08}
+                        scrollEnd={0.24}
+                        progressRef={adaptProgressRef}
+                        blocks={[
+                          { word: 'Adapt', desc: 'We watch the market closely, read the signals early, and shift before the wave even begins to move.' },
+                          { word: 'Transform', desc: 'We rebuild your presence into something sharper, faster, more engaging, and built to win.' },
+                          { word: 'Dominate', desc: 'Consistent systems and creative edge put you ahead of the competition and keep you there.' },
+                        ]}
+                      />
+                    </div>
                   </div>
-                </div>
-              </ScrollSection>
+                </ScrollSection>
+              )}
 
               <ScrollSection
                 scrollStart={0.8}
@@ -2390,6 +2928,12 @@ export default function App() {
         <button className="journey-back" onClick={() => { setSelectedOption(null); setJourney(null); }}>Back</button>
       )}
       <div className="view-switcher">
+        <button
+          className={`view-btn ${activeView === 'default' ? 'active' : ''}`}
+          onClick={() => { setSelectedOption(null); setJourney(null); setActiveView('default'); }}
+        >
+          CosmiChameleon
+        </button>
         <button
           className={`view-btn ${activeView === 'services' ? 'active' : ''}`}
           onClick={() => { setSelectedOption(null); setJourney(null); setActiveView('services'); }}
