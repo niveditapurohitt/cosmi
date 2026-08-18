@@ -424,6 +424,12 @@ function useFloatingTitleTextures(title, subtitle, accent) {
   return texs;
 }
 
+function ScrollElBridge({ scrollElRef }) {
+  const scroll = useScroll();
+  scrollElRef.current = scroll.el || null;
+  return null;
+}
+
 function CameraTracker({ length, journey, mouseXRef, mouseYRef }) {
   const scroll = useScroll();
   const journeyScrollRef = useRef(null);
@@ -2737,6 +2743,11 @@ export default function App() {
   const mouseXRef = useRef(0);
   const mouseYRef = useRef(0);
   const suppressDocClickRef = useRef(false);
+  const scrollElRef = useRef(null);
+
+  const resetScrollToStart = () => {
+    if (scrollElRef.current) scrollElRef.current.scrollLeft = 0;
+  };
 
   useEffect(() => {
     if (!journey) setSelectedOption(null);
@@ -2825,8 +2836,9 @@ export default function App() {
           <directionalLight position={[10, 10, 10]} intensity={0.8} />
           <directionalLight position={[-10, -5, -10]} intensity={0.3} />
 
-          <ScrollControls pages={TOTAL_PAGES} horizontal damping={0.15} enabled={!journey} style={{ zIndex: 3 }}>
-<Galaxy length={DNA_LENGTH * 1.5} />
+<ScrollControls pages={TOTAL_PAGES} horizontal damping={0.15} enabled={!journey} style={{ zIndex: 3 }}>
+            <ScrollElBridge scrollElRef={scrollElRef} />
+            <Galaxy length={DNA_LENGTH * 1.5} />
             <DNAHelix journey={journey} mouseYRef={mouseYRef} view={activeView} />
             {sceneCards.map((card, i) => (
                 <OrbitingCard
@@ -2928,21 +2940,21 @@ export default function App() {
         <button className="journey-back" onClick={() => { setSelectedOption(null); setJourney(null); }}>Back</button>
       )}
       <div className="view-switcher">
-        <button
+<button
           className={`view-btn ${activeView === 'default' ? 'active' : ''}`}
-          onClick={() => { setSelectedOption(null); setJourney(null); setActiveView('default'); }}
+          onClick={() => { setSelectedOption(null); setJourney(null); resetScrollToStart(); setActiveView('default'); }}
         >
           CosmiChameleon
         </button>
         <button
           className={`view-btn ${activeView === 'services' ? 'active' : ''}`}
-          onClick={() => { setSelectedOption(null); setJourney(null); setActiveView('services'); }}
+          onClick={() => { setSelectedOption(null); setJourney(null); resetScrollToStart(); setActiveView('services'); }}
         >
           Our Services
         </button>
         <button
           className={`view-btn ${activeView === 'products' ? 'active' : ''}`}
-          onClick={() => { setSelectedOption(null); setJourney(null); setActiveView('products'); }}
+          onClick={() => { setSelectedOption(null); setJourney(null); resetScrollToStart(); setActiveView('products'); }}
         >
           Our Products
         </button>
