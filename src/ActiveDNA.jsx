@@ -3,11 +3,6 @@ import { useFrame } from '@react-three/fiber';
 import { useScroll } from '@react-three/drei';
 import * as THREE from 'three';
 
-const smoothstep = (a, b, x) => {
-    const u = THREE.MathUtils.clamp((x - a) / Math.max(0.0001, b - a), 0, 1);
-    return u * u * (3 - 2 * u);
-};
-
 const circleTexture = (() => {
     const canvas = document.createElement('canvas');
     canvas.width = 64;
@@ -28,11 +23,13 @@ export default function ActiveDNA({ length = 100, breaks = [] }) {
     const scroll = useScroll();
     const currentScale = useRef(1);
     const blurScale = useRef(0);
+    const strandTick = useRef(0);
+    const blurSettled = useRef(false);
 
     const radius = 3.5;
     const twists = Math.max(1, Math.round(length / 10));
     const pointsPerStrand = Math.round(length * 3);
-    const maxLinesPerStrand = Math.max(3000, pointsPerStrand * 30);
+    const maxLinesPerStrand = Math.max(2400, pointsPerStrand * 14);
 
     const { strand1Particles, strand2Particles, s1Colors, s2Colors } = useMemo(() => {
         const s1 = []; const s2 = [];
@@ -65,8 +62,22 @@ export default function ActiveDNA({ length = 100, breaks = [] }) {
         };
     }, [length, radius, twists]);
 
-    const s1Positions = useMemo(() => new Float32Array(strand1Particles.length * 3), [strand1Particles]);
-    const s2Positions = useMemo(() => new Float32Array(strand2Particles.length * 3), [strand2Particles]);
+    const s1Positions = useMemo(() => {
+        const arr = new Float32Array(strand1Particles.length * 3);
+        for (let i = 0; i < strand1Particles.length; i++) {
+            const b = strand1Particles[i].base;
+            arr[i * 3] = b.x; arr[i * 3 + 1] = b.y; arr[i * 3 + 2] = b.z;
+        }
+        return arr;
+    }, [strand1Particles]);
+    const s2Positions = useMemo(() => {
+        const arr = new Float32Array(strand2Particles.length * 3);
+        for (let i = 0; i < strand2Particles.length; i++) {
+            const b = strand2Particles[i].base;
+            arr[i * 3] = b.x; arr[i * 3 + 1] = b.y; arr[i * 3 + 2] = b.z;
+        }
+        return arr;
+    }, [strand2Particles]);
     const s1Lines = useMemo(() => new Float32Array(maxLinesPerStrand * 6), []);
     const s2Lines = useMemo(() => new Float32Array(maxLinesPerStrand * 6), []);
 
@@ -83,24 +94,31 @@ export default function ActiveDNA({ length = 100, breaks = [] }) {
     const geoS1Lines = useMemo(() => {
         const g = new THREE.BufferGeometry();
         g.setAttribute('position', new THREE.BufferAttribute(s1Lines, 3));
+        g.setDrawRange(0, 0);
         return g;
     }, [s1Lines]);
     const geoS2Lines = useMemo(() => {
         const g = new THREE.BufferGeometry();
         g.setAttribute('position', new THREE.BufferAttribute(s2Lines, 3));
+        g.setDrawRange(0, 0);
         return g;
     }, [s2Lines]);
 
     useFrame((state) => {
         const t = state.clock.getElapsedTime();
-        const offset = scroll ? scroll.offset : 0;
-        const blurTarget = smoothstep(0.08, 0.14, offset) * (1 - smoothstep(0.22, 0.29, offset));
-        blurScale.current = THREE.MathUtils.lerp(blurScale.current, blurTarget, 0.08);
+        if (groupRef.current && (blurScale.current > 0.002 || !blurSettled.current)) {
+            blurScale.current = THREE.MathUtils.lerp(blurScale.current, 0, 0.08);
+            if (blurScale.current <= 0.002) {
+                blurScale.current = 0;
+                blurSettled.current = true;
+            }
+        }
+        strandTick.current += 1;
 
         const updateStrand = (particles, positionsArray, linesArray, pointsGeo, linesGeo) => {
             let lineCount = 0; const thresholdSq = 1.5 * 1.5;
 
-            const windowSize = 14;
+            const windowSize = 6;
 
             for (let i = 0; i < particles.length; i++) {
                 const p = particles[i];
@@ -135,8 +153,12 @@ export default function ActiveDNA({ length = 100, breaks = [] }) {
             linesGeo.attributes.position.needsUpdate = true;
         };
 
-        updateStrand(strand1Particles, s1Positions, s1Lines, geoS1Points, geoS1Lines);
-        updateStrand(strand2Particles, s2Positions, s2Lines, geoS2Points, geoS2Lines);
+        // Alternate strands across frames to halve per-frame CPU cost
+        if (strandTick.current % 2 === 0) {
+            updateStrand(strand1Particles, s1Positions, s1Lines, geoS1Points, geoS1Lines);
+        } else {
+            updateStrand(strand2Particles, s2Positions, s2Lines, geoS2Points, geoS2Lines);
+        }
 
         if (groupRef.current && scroll) {
             const targetRotation = scroll.offset * Math.PI * 10;
@@ -157,7 +179,7 @@ export default function ActiveDNA({ length = 100, breaks = [] }) {
             groupRef.current.scale.setScalar(currentScale.current);
         }
 
-        if (groupRef.current) {
+        if (groupRef.current && !blurSettled.current) {
             groupRef.current.traverse((o) => {
                 if (!o.material) return;
                 if (o.userData.baseOp === undefined) o.userData.baseOp = o.material.opacity;
@@ -177,23 +199,23 @@ export default function ActiveDNA({ length = 100, breaks = [] }) {
 
     return (
         <group ref={groupRef}>
-            <points geometry={geoS1Points}>
+            <points geometry={geoS1Points} frustumCulled={false}>
                 <pointsMaterial map={circleTexture} size={0.1} color="#ffffff" transparent opacity={0.9} alphaTest={0.01} blending={THREE.AdditiveBlending} depthWrite={false} />
             </points>
-            <points geometry={geoS1Points}>
+            <points geometry={geoS1Points} frustumCulled={false}>
                 <pointsMaterial map={circleTexture} size={0.5} color="#4488ff" transparent opacity={0.28} alphaTest={0.01} blending={THREE.AdditiveBlending} depthWrite={false} />
             </points>
-            <lineSegments geometry={geoS1Lines}>
+            <lineSegments geometry={geoS1Lines} frustumCulled={false}>
                 <lineBasicMaterial color="#4488ff" transparent opacity={0.4} blending={THREE.AdditiveBlending} depthWrite={false} />
             </lineSegments>
 
-            <points geometry={geoS2Points}>
+            <points geometry={geoS2Points} frustumCulled={false}>
                 <pointsMaterial map={circleTexture} size={0.1} color="#ffffff" transparent opacity={0.9} alphaTest={0.01} blending={THREE.AdditiveBlending} depthWrite={false} />
             </points>
-            <points geometry={geoS2Points}>
+            <points geometry={geoS2Points} frustumCulled={false}>
                 <pointsMaterial map={circleTexture} size={0.5} color="#ff4488" transparent opacity={0.28} alphaTest={0.01} blending={THREE.AdditiveBlending} depthWrite={false} />
             </points>
-            <lineSegments geometry={geoS2Lines}>
+            <lineSegments geometry={geoS2Lines} frustumCulled={false}>
                 <lineBasicMaterial color="#ff4488" transparent opacity={0.4} blending={THREE.AdditiveBlending} depthWrite={false} />
             </lineSegments>
         </group>

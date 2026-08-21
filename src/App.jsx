@@ -211,33 +211,35 @@ ctx.clearRect(0, 0, 640, 200);
   rrect();
   ctx.stroke();
 
-  // title
+// title
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
-  let size = 38;
-  ctx.font = `500 ${size}px "Fredoka"`;
+  let size = 42;
+  ctx.font = `600 ${size}px "Fredoka"`;
   const maxW = 600 - 60;
-  while (ctx.measureText(title).width > maxW && size > 20) {
+  while (ctx.measureText(title).width > maxW && size > 22) {
     size -= 1;
-    ctx.font = `500 ${size}px "Fredoka"`;
+    ctx.font = `600 ${size}px "Fredoka"`;
   }
-  const titleY = hover ? 68 : 96;
+  const titleY = hover ? 56 : 96;
   ctx.save();
-  ctx.shadowColor = 'rgba(0,0,0,0.65)';
-  ctx.shadowBlur = 12;
+  ctx.shadowColor = 'rgba(0,0,0,0.7)';
+  ctx.shadowBlur = 16;
   ctx.fillStyle = '#ffffff';
+  ctx.letterSpacing = '1px';
   ctx.fillText(title, 24, titleY);
   ctx.restore();
 
   // details revealed on hover
   if (hover && text) {
-    ctx.fillStyle = `rgba(${accent}, 0.9)`;
-    ctx.fillRect(24, 100, 46, 3);
-    ctx.font = '400 18px "Fredoka"';
+    ctx.fillStyle = `rgba(${accent}, 0.95)`;
+    ctx.fillRect(24, 88, 54, 3);
+    ctx.font = '400 21px "Inter"';
+    ctx.letterSpacing = '0.4px';
     ctx.fillStyle = 'rgba(255,255,255,0.9)';
     const lines = wrapText(ctx, text, maxW);
-    lines.slice(0, 2).forEach((line, j) => {
-      ctx.fillText(line, 24, 118 + j * 24);
+    lines.slice(0, 3).forEach((line, j) => {
+      ctx.fillText(line, 24, 112 + j * 28);
     });
   }
 
@@ -413,9 +415,9 @@ function useFloatingTitleTextures(title, subtitle, accent) {
         hover: makeCardFloatingTextTexture(title, subtitle, accent, true),
       });
     };
-    Promise.all([
-      document.fonts.load('500 48px "Fredoka"'),
-      document.fonts.load('400 18px "Fredoka"'),
+Promise.all([
+      document.fonts.load(`600 ${boost ? 64 : 52}px "Fredoka"`),
+      document.fonts.load('400 18px "Inter"'),
       document.fonts.ready,
     ]).then(draw).catch(draw);
     return () => { cancelled = true; };
@@ -473,30 +475,6 @@ function CameraTracker({ length, journey, mouseXRef, mouseYRef }) {
   return null;
 }
 
-function AnimateWords({ children }) {
-  const ref = useRef();
-  const [on, setOn] = useState(false);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const io = new IntersectionObserver((entries) => {
-      if (entries[0].isIntersecting) {
-        setOn(true);
-        io.disconnect();
-      }
-    }, { threshold: 0.4 });
-    io.observe(el);
-    return () => io.disconnect();
-  }, []);
-
-  return (
-    <div ref={ref} className={on ? 'image-placeholder-inner anim-words anim' : 'image-placeholder-inner anim-words'}>
-      {children}
-    </div>
-  );
-}
-
 function LaunchEvolutionStage({ scrollStart, scrollEnd }) {
   const scroll = useScroll();
   const particlesRef = useRef();
@@ -543,31 +521,36 @@ function LaunchEvolutionStage({ scrollStart, scrollEnd }) {
 
 function ScrollSection({ children, scrollStart, scrollEnd, persist = false, style = {} }) {
   const ref = useRef();
+  const lastOpacityRef = useRef(-1);
   const scroll = useScroll();
 
   useFrame(() => {
     if (!ref.current) return;
     const offset = scroll.offset;
+    let next;
     if (offset >= scrollStart) {
       if (persist) {
         if (offset <= scrollStart) {
-          ref.current.style.opacity = 1;
+          next = 1;
         } else {
           const progress = (offset - scrollStart) / Math.max(0.01, scrollEnd - scrollStart);
-          const fadeIn = Math.min(1, progress / 0.15);
-          ref.current.style.opacity = fadeIn;
+          next = Math.min(1, progress / 0.15);
         }
       } else if (offset <= scrollEnd) {
         const progress = (offset - scrollStart) / (scrollEnd - scrollStart);
         let opacity = 1;
         if (progress < 0.15) opacity = progress / 0.15;
         else if (progress > 0.85) opacity = (1 - progress) / 0.15;
-        ref.current.style.opacity = Math.max(0, Math.min(1, opacity));
+        next = Math.max(0, Math.min(1, opacity));
       } else {
-        ref.current.style.opacity = 0;
+        next = 0;
       }
     } else {
-      ref.current.style.opacity = 0;
+      next = 0;
+    }
+    if (Math.abs(next - lastOpacityRef.current) > 0.002) {
+      lastOpacityRef.current = next;
+      ref.current.style.opacity = next;
     }
   });
 
@@ -580,13 +563,17 @@ function ScrollSection({ children, scrollStart, scrollEnd, persist = false, styl
 
 function HeroLogoSection() {
   const ref = useRef();
+  const lastOpacityRef = useRef(-1);
   const scroll = useScroll();
 
   useFrame(() => {
     if (!ref.current) return;
     const offset = scroll.offset;
     const fade = 1 - THREE.MathUtils.clamp(smoothstep(0.03, 0.16, offset), 0, 1);
-    ref.current.style.opacity = fade.toFixed(3);
+    if (Math.abs(fade - lastOpacityRef.current) > 0.002) {
+      lastOpacityRef.current = fade;
+      ref.current.style.opacity = fade.toFixed(3);
+    }
   });
 
   return (
@@ -603,68 +590,6 @@ function HeroLogoSection() {
 function smoothstep(a, b, x) {
   const u = THREE.MathUtils.clamp((x - a) / Math.max(0.0001, b - a), 0, 1);
   return u * u * (3 - 2 * u);
-}
-
-function AdaptStage({ scrollStart, scrollEnd, progressRef, blocks }) {
-  const scroll = useScroll();
-  const stageRef = useRef();
-  const lineRef = useRef();
-  const captionRef = useRef();
-  const blockRefs = [useRef(), useRef(), useRef()];
-
-  useFrame(() => {
-    if (!stageRef.current) return;
-    const t = THREE.MathUtils.clamp((scroll.offset - scrollStart) / Math.max(0.0001, scrollEnd - scrollStart), 0, 1);
-    if (progressRef) progressRef.current = t;
-
-    const [b0, b1, b2] = blockRefs;
-
-    if (b0.current) {
-      const op = 1 - smoothstep(0.55, 0.78, t);
-      const ty = smoothstep(0, 0.3, t) * 30;
-      b0.current.style.opacity = op.toFixed(3);
-      b0.current.style.transform = `translateY(${ty.toFixed(2)}px)`;
-    }
-    if (b1.current) {
-      const op = smoothstep(0.1, 0.28, t) * (1 - smoothstep(0.8, 0.95, t));
-      const ty = (1 - smoothstep(0.1, 0.3, t)) * 30;
-      b1.current.style.opacity = op.toFixed(3);
-      b1.current.style.transform = `translateY(${ty.toFixed(2)}px)`;
-    }
-    if (b2.current) {
-      const op = smoothstep(0.42, 0.58, t);
-      const ty = (1 - smoothstep(0.42, 0.66, t)) * 36;
-      b2.current.style.opacity = op.toFixed(3);
-      b2.current.style.transform = `translateY(${ty.toFixed(2)}px)`;
-    }
-    if (lineRef.current) {
-      lineRef.current.style.height = `${(12 + 76 * t).toFixed(2)}%`;
-    }
-    if (captionRef.current) {
-      captionRef.current.style.opacity = smoothstep(0.7, 0.88, t).toFixed(3);
-    }
-  });
-
-  return (
-    <div className="adapt-stage" ref={stageRef}>
-      <span className="adapt-line" ref={lineRef} />
-      <div className="adapt-blocks">
-        {blocks.map((b, i) => (
-          <div className="image-block" key={b.word} ref={blockRefs[i]} style={{ opacity: 0 }}>
-            <div className="image-block-main">
-              <span className="image-label">{b.word}</span>
-              <p className="image-desc">{b.desc}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-      <div className="image-caption-wrap" ref={captionRef} style={{ opacity: 0 }}>
-        <span className="image-caption-rule" />
-        <p className="image-caption">Where evolution meets innovation</p>
-        <span className="image-caption-arrow">↓</span>
-      </div>
-    </div>
-  );
 }
 
 function useCardTexture(title, subtitle, accent, items) {
@@ -713,7 +638,8 @@ function useOptionTextures(items, accent) {
       setTexs(entry);
     };
     Promise.all([
-      document.fonts.load('500 33px "Fredoka"'),
+      document.fonts.load('600 42px "Fredoka"'),
+      document.fonts.load('400 21px "Inter"'),
       document.fonts.ready,
     ]).then(draw).catch(draw);
     return () => { cancelled = true; };
@@ -732,7 +658,8 @@ function useOptionTexture(item, accent, hover) {
       setTex(makeOptionTexture(item.title, item.text, accent, hover));
     };
     Promise.all([
-      document.fonts.load('500 33px "Fredoka"'),
+      document.fonts.load('600 42px "Fredoka"'),
+      document.fonts.load('400 21px "Inter"'),
       document.fonts.ready,
     ]).then(draw).catch(draw);
     return () => { cancelled = true; };
@@ -786,34 +713,40 @@ function makeCardFloatingTextTexture(title, text, accent, hover, boost = false) 
   canvas.height = 420;
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, 576, 420);
+  if (!title && !text) {
+    const blank = new THREE.CanvasTexture(canvas);
+    blank.needsUpdate = true;
+    return blank;
+  }
 
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
 
-  const glow = ctx.createRadialGradient(288, 110, 0, 288, 110, 190);
-  glow.addColorStop(0, `rgba(${accent}, ${hover ? 0.18 : 0.1})`);
-  glow.addColorStop(0.55, `rgba(${accent}, ${hover ? 0.08 : 0.04})`);
+const glow = ctx.createRadialGradient(288, 118, 0, 288, 118, 210);
+  glow.addColorStop(0, `rgba(${accent}, ${hover ? 0.2 : 0.11})`);
+  glow.addColorStop(0.55, `rgba(${accent}, ${hover ? 0.09 : 0.05})`);
   glow.addColorStop(1, 'rgba(0, 0, 0, 0)');
   ctx.fillStyle = glow;
   ctx.fillRect(0, 0, 576, 420);
 
-  ctx.fillStyle = `rgba(${accent}, ${hover ? 0.92 : 0.82})`;
-  ctx.fillRect(194, 56, 188, 2);
+  ctx.fillStyle = `rgba(${accent}, ${hover ? 0.95 : 0.85})`;
+  ctx.fillRect(176, 56, 224, 3);
 
   const titleLines = splitTitleLines(title);
-  let size = boost ? 56 : 46;
-  ctx.font = `500 ${size}px "Fredoka"`;
-  const titleMaxWidth = boost ? 500 : 470;
-  while (titleLines.some((line) => ctx.measureText(line).width > titleMaxWidth) && size > (boost ? 24 : 20)) {
+  let size = boost ? 64 : 52;
+  ctx.font = `600 ${size}px "Fredoka"`;
+  const titleMaxWidth = boost ? 520 : 490;
+  while (titleLines.some((line) => ctx.measureText(line).width > titleMaxWidth) && size > (boost ? 26 : 22)) {
     size -= 1;
-    ctx.font = `500 ${size}px "Fredoka"`;
+    ctx.font = `600 ${size}px "Fredoka"`;
   }
   ctx.save();
-  ctx.shadowColor = 'rgba(0,0,0,0.8)';
-  ctx.shadowBlur = 20;
+  ctx.shadowColor = 'rgba(0,0,0,0.85)';
+  ctx.shadowBlur = 24;
   ctx.fillStyle = '#ffffff';
-  const titleStartY = boost ? 132 : 130;
-  const titleGap = boost ? 60 : 46;
+  ctx.letterSpacing = '1.2px';
+  const titleStartY = boost ? 136 : 132;
+  const titleGap = boost ? 66 : 50;
   titleLines.slice(0, 2).forEach((line, i) => ctx.fillText(line, 288, titleStartY + i * titleGap));
   ctx.restore();
 
@@ -847,9 +780,9 @@ function useCardFloatingTextTextures(items, accent, boost = false) {
       }
       setTexs(entry);
     };
-    Promise.all([
-      document.fonts.load(`${boost ? 56 : 46}px "Fredoka"`),
-      document.fonts.load('400 18px "Fredoka"'),
+Promise.all([
+      document.fonts.load(`600 ${boost ? 64 : 52}px "Fredoka"`),
+      document.fonts.load('400 18px "Inter"'),
       document.fonts.ready,
     ]).then(draw).catch(draw);
     return () => { cancelled = true; };
@@ -864,49 +797,56 @@ function makeHeroTitleTexture(title, subtitle, accent, boost = false) {
   canvas.height = 420;
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, 640, 420);
+  if (!title && !subtitle) {
+    const blank = new THREE.CanvasTexture(canvas);
+    blank.needsUpdate = true;
+    return blank;
+  }
 
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
 
-  const glow = ctx.createRadialGradient(320, 110, 0, 320, 110, 220);
-  glow.addColorStop(0, `rgba(${accent}, 0.18)`);
-  glow.addColorStop(0.55, `rgba(${accent}, 0.08)`);
+const glow = ctx.createRadialGradient(320, 118, 0, 320, 118, 240);
+  glow.addColorStop(0, `rgba(${accent}, 0.22)`);
+  glow.addColorStop(0.55, `rgba(${accent}, 0.09)`);
   glow.addColorStop(1, 'rgba(0, 0, 0, 0)');
   ctx.fillStyle = glow;
   ctx.fillRect(0, 0, 640, 420);
 
-  ctx.fillStyle = `rgba(${accent}, 0.88)`;
-  ctx.fillRect(228, 58, 184, 2);
+  ctx.fillStyle = `rgba(${accent}, 0.95)`;
+  ctx.fillRect(205, 56, 230, 3);
 
   const titleLines = splitTitleLines(title);
-  let size = boost ? 68 : 58;
-  ctx.font = `500 ${size}px "Fredoka"`;
+  let size = boost ? 76 : 62;
+  ctx.font = `600 ${size}px "Fredoka"`;
   const titleMaxWidth = boost ? 560 : 520;
-  while (titleLines.some((line) => ctx.measureText(line).width > titleMaxWidth) && size > (boost ? 30 : 24)) {
+  while (titleLines.some((line) => ctx.measureText(line).width > titleMaxWidth) && size > (boost ? 32 : 26)) {
     size -= 1;
-    ctx.font = `500 ${size}px "Fredoka"`;
+    ctx.font = `600 ${size}px "Fredoka"`;
   }
 
   ctx.save();
-  ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
-  ctx.shadowBlur = 20;
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.85)';
+  ctx.shadowBlur = 24;
   ctx.fillStyle = '#ffffff';
-  const titleStartY = boost ? 138 : 132;
-  const titleGap = boost ? 66 : 50;
+  ctx.letterSpacing = '1.5px';
+  const titleStartY = boost ? 142 : 134;
+  const titleGap = boost ? 72 : 56;
   titleLines.slice(0, 2).forEach((line, i) => ctx.fillText(line, 320, titleStartY + i * titleGap));
   ctx.restore();
 
-  let subSize = boost ? 38 : 30;
-  ctx.font = `500 ${subSize}px "Fredoka"`;
-  while (ctx.measureText(subtitle).width > (boost ? 560 : 520) && subSize > (boost ? 16 : 14)) {
+  let subSize = boost ? 34 : 26;
+  ctx.font = `600 ${subSize}px "Inter"`;
+  while (ctx.measureText(subtitle.toUpperCase()).width > (boost ? 560 : 520) && subSize > (boost ? 15 : 13)) {
     subSize -= 1;
-    ctx.font = `500 ${subSize}px "Fredoka"`;
+    ctx.font = `600 ${subSize}px "Inter"`;
   }
   ctx.save();
-  ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
-  ctx.shadowBlur = 14;
-  ctx.fillStyle = `rgba(${accent}, 0.95)`;
-  ctx.fillText(subtitle, 320, boost ? 244 : 226);
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.75)';
+  ctx.shadowBlur = 16;
+  ctx.fillStyle = `rgba(${accent}, 0.98)`;
+  ctx.letterSpacing = '4px';
+  ctx.fillText(String(subtitle).toUpperCase(), 320, boost ? 264 : 246);
   ctx.restore();
 
   const texture = new THREE.CanvasTexture(canvas);
@@ -923,9 +863,9 @@ function useHeroTitleTexture(title, subtitle, accent, boost = false) {
       if (cancelled) return;
       setTex(makeHeroTitleTexture(title, subtitle, accent, boost));
     };
-    Promise.all([
-      document.fonts.load(`500 ${boost ? 68 : 64}px "Fredoka"`),
-      document.fonts.load(`500 ${boost ? 38 : 34}px "Fredoka"`),
+Promise.all([
+      document.fonts.load(`600 ${boost ? 76 : 62}px "Fredoka"`),
+      document.fonts.load(`600 ${boost ? 34 : 26}px "Inter"`),
       document.fonts.ready,
     ]).then(draw).catch(draw);
     return () => { cancelled = true; };
@@ -1006,28 +946,30 @@ function makeSectionsTexture(item, category, accent) {
   ctx.fillStyle = `rgba(${accent}, 0.9)`;
   ctx.fillRect(40, 40, 920, 3);
 
-  ctx.font = '500 28px "Fredoka"';
-  ctx.fillStyle = `rgba(${accent}, 0.9)`;
-  ctx.fillText(String(category || '').toUpperCase(), 500, 100);
+  ctx.font = '600 18px "Inter"';
+  ctx.letterSpacing = '4px';
+  ctx.fillStyle = `rgba(${accent}, 0.95)`;
+  ctx.fillText(String(category || '').toUpperCase(), 500, 96);
 
-  ctx.font = '500 58px "Fredoka"';
   const maxW = 840;
   let title = item.title || '';
-  let ts = 58;
-  ctx.font = `500 ${ts}px "Fredoka"`;
-  while (ctx.measureText(title).width > maxW && ts > 32) {
+  let ts = 62;
+  ctx.font = `600 ${ts}px "Fredoka"`;
+  while (ctx.measureText(title).width > maxW && ts > 30) {
     ts -= 2;
-    ctx.font = `500 ${ts}px "Fredoka"`;
+    ctx.font = `600 ${ts}px "Fredoka"`;
   }
   ctx.save();
-  ctx.shadowColor = 'rgba(0,0,0,0.7)';
-  ctx.shadowBlur = 14;
+  ctx.shadowColor = 'rgba(0,0,0,0.75)';
+  ctx.shadowBlur = 18;
   ctx.fillStyle = '#ffffff';
-  ctx.fillText(title, 500, 205);
+  ctx.letterSpacing = '1px';
+  ctx.fillText(title, 500, 210);
   ctx.restore();
+  ctx.letterSpacing = '0';
 
-  ctx.fillStyle = `rgba(${accent}, 0.9)`;
-  ctx.fillRect(400, 265, 200, 4);
+  ctx.fillStyle = `rgba(${accent}, 0.95)`;
+  ctx.fillRect(390, 275, 220, 4);
 
   const cards = item.sections || [];
   const cardY0 = 330;
@@ -1086,18 +1028,22 @@ function makeSectionsTexture(item, category, accent) {
     ctx.fill();
 
     ctx.textAlign = 'left';
-    ctx.font = '500 20px "Inter"';
-    ctx.fillStyle = `rgba(${accent}, 0.9)`;
-    ctx.fillText(String(sec.tag || sec.label).toUpperCase(), 458, cy + 48);
+    ctx.font = '600 16px "Inter"';
+    ctx.letterSpacing = '3px';
+    ctx.fillStyle = `rgba(${accent}, 0.95)`;
+    ctx.fillText(String(sec.tag || sec.label).toUpperCase(), 458, cy + 60);
 
-    ctx.font = '500 40px "Fredoka"';
+    ctx.font = '600 44px "Fredoka"';
     ctx.fillStyle = '#ffffff';
-    ctx.fillText(sec.label, 458, cy + 106);
+    ctx.letterSpacing = '0.5px';
+    ctx.fillText(sec.label, 458, cy + 122);
 
-    ctx.font = '400 23px "Fredoka"';
-    ctx.fillStyle = 'rgba(255,255,255,0.78)';
+    ctx.font = '400 24px "Inter"';
+    ctx.letterSpacing = '0.3px';
+    ctx.fillStyle = 'rgba(255,255,255,0.82)';
     const dl = wrapText(ctx, sec.text || '', 440);
-    dl.slice(0, 2).forEach((line, j) => ctx.fillText(line, 458, cy + 168 + j * 34));
+    dl.slice(0, 3).forEach((line, j) => ctx.fillText(line, 458, cy + 176 + j * 34));
+    ctx.letterSpacing = '0';
     ctx.textAlign = 'center';
   });
 
@@ -1189,32 +1135,35 @@ function makeDetailTexture(item, category, accent) {
 
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.font = '500 30px "Fredoka"';
-  ctx.fillStyle = `rgba(${accent}, 0.9)`;
-  ctx.fillText(String(category || '').toUpperCase(), 500, 170);
+  ctx.font = '600 18px "Inter"';
+  ctx.letterSpacing = '4px';
+  ctx.fillStyle = `rgba(${accent}, 0.95)`;
+  ctx.fillText(String(category || '').toUpperCase(), 500, 160);
 
-  let size = 72;
-  ctx.font = `500 ${size}px "Fredoka"`;
+  let size = 74;
+  ctx.font = `600 ${size}px "Fredoka"`;
   const maxW = 840;
-  while (ctx.measureText(item.title).width > maxW && size > 30) {
+  while (ctx.measureText(item.title).width > maxW && size > 26) {
     size -= 2;
-    ctx.font = `500 ${size}px "Fredoka"`;
+    ctx.font = `600 ${size}px "Fredoka"`;
   }
   ctx.save();
-  ctx.shadowColor = 'rgba(0,0,0,0.7)';
-  ctx.shadowBlur = 14;
+  ctx.shadowColor = 'rgba(0,0,0,0.8)';
+  ctx.shadowBlur = 20;
   ctx.fillStyle = '#ffffff';
+  ctx.letterSpacing = '1px';
   ctx.fillText(item.title, 500, 340);
   ctx.restore();
+  ctx.letterSpacing = '0';
 
-  ctx.fillStyle = `rgba(${accent}, 0.9)`;
-  ctx.fillRect(400, 440, 200, 4);
+  ctx.fillStyle = `rgba(${accent}, 0.95)`;
+  ctx.fillRect(390, 420, 220, 4);
 
-  ctx.font = '400 44px "Fredoka"';
+  ctx.font = '400 26px "Inter"';
   ctx.fillStyle = 'rgba(255,255,255,0.92)';
   const lines = wrapText(ctx, item.text || '', 760);
   lines.slice(0, 4).forEach((line, j) => {
-    ctx.fillText(line, 500, 590 + j * 70);
+    ctx.fillText(line, 500, 560 + j * 44);
   });
 
   ctx.strokeStyle = `rgba(${accent}, 0.3)`;
@@ -1244,8 +1193,9 @@ function useDetailTexture(item, category, accent) {
       setTex(makeDetailTexture(item, category, accent));
     };
     Promise.all([
-      document.fonts.load('500 72px "Fredoka"'),
-      document.fonts.load('400 44px "Fredoka"'),
+      document.fonts.load('600 74px "Fredoka"'),
+      document.fonts.load('600 18px "Inter"'),
+      document.fonts.load('400 26px "Inter"'),
       document.fonts.ready,
     ]).then(draw).catch(draw);
     return () => { cancelled = true; };
@@ -1316,28 +1266,31 @@ function makeGlitchInfoTexture(title, subtitle, accent, items = []) {
   ctx.fillStyle = `rgba(${accent}, 0.9)`;
   ctx.fillRect(40, 40, 920, 3);
 
-  ctx.font = '500 28px "Fredoka"';
-  ctx.fillStyle = `rgba(${accent}, 0.9)`;
-  ctx.fillText(String(subtitle || 'Cosmichameleon').toUpperCase(), 500, 120);
+  ctx.font = '600 18px "Inter"';
+  ctx.letterSpacing = '4px';
+  ctx.fillStyle = `rgba(${accent}, 0.95)`;
+  ctx.fillText(String(subtitle || 'Cosmichameleon').toUpperCase(), 500, 114);
 
   ctx.font = '600 64px "Fredoka"';
   const maxW = 840;
   let t = title || 'Cosmichameleon';
-  let ts = 64;
+  let ts = 68;
   ctx.font = `600 ${ts}px "Fredoka"`;
-  while (ctx.measureText(t).width > maxW && ts > 30) {
+  while (ctx.measureText(t).width > maxW && ts > 28) {
     ts -= 2;
     ctx.font = `600 ${ts}px "Fredoka"`;
   }
   ctx.save();
-  ctx.shadowColor = 'rgba(0,0,0,0.75)';
-  ctx.shadowBlur = 16;
+  ctx.shadowColor = 'rgba(0,0,0,0.8)';
+  ctx.shadowBlur = 20;
   ctx.fillStyle = '#ffffff';
+  ctx.letterSpacing = '1px';
   ctx.fillText(t, 500, 250);
   ctx.restore();
+  ctx.letterSpacing = '0';
 
-  ctx.fillStyle = `rgba(${accent}, 0.9)`;
-  ctx.fillRect(400, 330, 200, 4);
+  ctx.fillStyle = `rgba(${accent}, 0.95)`;
+  ctx.fillRect(390, 330, 220, 4);
 
   const list = Array.isArray(items) && items.length ? items : [];
   if (list.length) {
@@ -1360,13 +1313,16 @@ function makeGlitchInfoTexture(title, subtitle, accent, items = []) {
       ctx.arc(110, y, 5, 0, Math.PI * 2);
       ctx.fill();
       ctx.textAlign = 'left';
-      ctx.font = '500 34px "Fredoka"';
+      ctx.font = '600 36px "Fredoka"';
+      ctx.letterSpacing = '0.5px';
       ctx.fillStyle = '#ffffff';
       ctx.fillText(String(it.title || ''), 140, y - 12);
-      ctx.font = '400 22px "Fredoka"';
-      ctx.fillStyle = 'rgba(255,255,255,0.7)';
+      ctx.font = '400 24px "Inter"';
+      ctx.letterSpacing = '0.3px';
+      ctx.fillStyle = 'rgba(255,255,255,0.75)';
       const tl = wrapText(ctx, it.text || '', 820).slice(0, 1);
-      tl.forEach((ln, j) => ctx.fillText(ln, 140, y + 16 + j * 28));
+      tl.forEach((ln, j) => ctx.fillText(ln, 140, y + 18 + j * 28));
+      ctx.letterSpacing = '0';
       ctx.textAlign = 'center';
     });
   } else {
@@ -1484,6 +1440,8 @@ const scroll = useScroll();
   const rotYRef = useRef(0);
   const nearVideoRef = useRef(true);
   const [nearVideo, setNearVideo] = React.useState(true);
+  const nearPlayRef = useRef(true);
+  const [nearPlay, setNearPlay] = React.useState(true);
   const isServiceTitleBoost = true;
 
 const worldX = view === 'default'
@@ -1496,16 +1454,17 @@ const worldX = view === 'default'
   const JOURNEY_CARD_SCALE = 1.1;
   const OPTION_ROW = 3.7;
   const OPTION_COL = 10.5;
-  const OPTION_SIZE = [3.5, 2.5];
+  const OPTION_SIZE = [4.0, 2.9];
   const OPTION_CARD_DEPTH = 0.24;
-  const SUB_CARD_SIZE = [3.5, 2.5];
+  const SUB_CARD_SIZE = [4.0, 2.9];
   const SUB_CARD_SCALE = 1;
   const SUB_CARD_STEP = 10;
   const SUB_CARD_OFFSET = 14;
   const SUB_CARD_DEPTH = 0.24;
-const SUB_ORBIT_RADIUS = 4.2;
+const SUB_ORBIT_RADIUS = 4.6;
   const cardsClickable = true;
-  const VIDEO_NEAR_RANGE = 18;
+  const VIDEO_NEAR_RANGE = 12;
+  const VIDEO_PLAY_RANGE = 18;
   const serviceItemAccents = React.useMemo(
     () => (kind === 'service' ? items.map((_, i) => SERVICE_ITEM_COLORS[i % SERVICE_ITEM_COLORS.length]) : null),
     [kind, items]
@@ -1597,17 +1556,23 @@ const optionTexs = useOptionTextures(items, color);
   const isJourneyTarget = isJourneying && journey.card === stairIndex;
   const isServicesMode = view === 'services' && stairIndex === 0;
   const mirrorSign = stairIndex >= 2 ? -1 : 1;
-const mainVideoActive = !isServicesMode && !isJourneying && !revealed && nearVideo;
+const mainVideoActive = !isServicesMode && !isJourneying && !revealed && nearPlay;
   const subVideosActive = isServicesMode && !isJourneying && nearVideo;
   const optionVideosActive = isJourneyTarget && nearVideo;
 
   useFrame((state, delta) => {
     if (!groupRef.current || !meshRef.current) return;
 
-    const nearNow = Math.abs(state.camera.position.x - worldX) < VIDEO_NEAR_RANGE || isJourneying;
+    const camDx = Math.abs(state.camera.position.x - worldX);
+    const nearNow = camDx < VIDEO_NEAR_RANGE || isJourneying;
     if (nearNow !== nearVideoRef.current) {
       nearVideoRef.current = nearNow;
       setNearVideo(nearNow);
+    }
+    const playNow = camDx < VIDEO_PLAY_RANGE || isJourneying;
+    if (playNow !== nearPlayRef.current) {
+      nearPlayRef.current = playNow;
+      setNearPlay(playNow);
     }
 
     if (isJourneying) {
@@ -1808,12 +1773,10 @@ if (subBodyRefs.current[i]) subBodyRefs.current[i].visible = false;
     const eased = 1 - Math.pow(1 - entryT, 3);
 
     const dnaRotation = offset * Math.PI * 10;
-    const helixAngle = (stairIndex / totalCards) * Math.PI * 2;
-    const visualAngle = helixAngle - dnaRotation;
 
-    let angleDiff = visualAngle - angleRef.current;
-    angleDiff = ((angleDiff + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
-    angleRef.current += angleDiff * 0.16;
+    const camRel = state.camera.position.x - worldX;
+    const swingTarget = THREE.MathUtils.clamp(-camRel * 0.22, -Math.PI / 2, Math.PI / 2);
+    angleRef.current = THREE.MathUtils.lerp(angleRef.current, swingTarget, 1 - Math.exp(-delta * 4));
     const angle = angleRef.current;
 
     const orbitY = Math.sin(angle) * orbitRadius;
@@ -1850,7 +1813,7 @@ const t = subTextRefs.current[i];
           face.material.map = tex;
           face.material.needsUpdate = true;
         }
-        const count = subRefs.current.length;
+const count = subRefs.current.length;
         const phase = (i / count) * Math.PI * 2;
         const subVisual = phase - dnaRotation;
         const centeredIndex = i - (count - 1) / 2;
@@ -2095,7 +2058,7 @@ onClick={(e) => {
           emissiveIntensity={0.07}
           depthWrite={false}
         />
-        <CardVideoPlane src={mainVideoSrc} size={SUB_CARD_SIZE} opacity={0.55} overlay={0.35} z={SUB_CARD_DEPTH / 2 + 0.02} renderOrder={10} active={mainVideoActive} />
+        <CardVideoPlane src={mainVideoSrc} size={SUB_CARD_SIZE} opacity={0.55} overlay={0.35} z={SUB_CARD_DEPTH / 2 + 0.02} renderOrder={10} active={mainVideoActive} startDelay={(stairIndex % 3) * 450} pull={nearVideo} />
         <mesh
           ref={mainFaceRef}
           position={[0, 0, SUB_CARD_DEPTH / 2 + 0.01]}
@@ -2200,7 +2163,7 @@ onClick={(e) => {
                     depthWrite={false}
                   />
                 </mesh>
-                <CardVideoPlane src={optionVideoSrcs[i]} size={OPTION_SIZE} opacity={0.55} overlay={0.35} z={OPTION_CARD_DEPTH / 2 + 0.02} renderOrder={10} active={optionVideosActive} />
+                <CardVideoPlane src={optionVideoSrcs[i]} size={OPTION_SIZE} opacity={0.55} overlay={0.35} z={OPTION_CARD_DEPTH / 2 + 0.02} renderOrder={10} active={optionVideosActive} startDelay={i * 300} />
                 <mesh
                   ref={(el) => { if (el) optionFaceRefs.current[i] = el; }}
                   position={[0, 0, OPTION_CARD_DEPTH / 2 + 0.01]}
@@ -2267,7 +2230,7 @@ onClick={(e) => {
                   depthWrite={false}
                 />
               </mesh>
-              <CardVideoPlane src={subVideoSrcs[i]} size={SUB_CARD_SIZE} opacity={0.55} overlay={0.35} z={SUB_CARD_DEPTH / 2 + 0.02} renderOrder={10} active={subVideosActive} />
+              <CardVideoPlane src={subVideoSrcs[i]} size={SUB_CARD_SIZE} opacity={0.55} overlay={0.35} z={SUB_CARD_DEPTH / 2 + 0.02} renderOrder={10} active={subVideosActive} startDelay={i * 300} />
               <mesh
                 ref={(el) => { if (el) subFaceRefs.current[i] = el; }}
                 position={[0, 0, SUB_CARD_DEPTH / 2 + 0.01]}
@@ -2413,8 +2376,8 @@ function seededShuffle(seed, arr) {
   return a;
 }
 
-const VIDEO_TEX_MAX_W = 384;
-const VIDEO_TEX_PULL_EVERY_FRAMES = 2;
+const VIDEO_TEX_MAX_W = 256;
+const VIDEO_TEX_PULL_EVERY_FRAMES = 4;
 
 const sharedVideoTextureCache = new Map();
 const activeVideoEntries = new Set();
@@ -2427,7 +2390,7 @@ function pullActiveVideoFrames() {
     videoPullAccum = 0;
     for (const entry of activeVideoEntries) {
       const v = entry.video;
-      if (v && v.readyState >= 2 && !v.paused) {
+      if (v && v.readyState >= 2 && !v.paused && entry.pullEnabled !== false) {
         entry.ctx.drawImage(v, 0, 0, entry.canvas.width, entry.canvas.height);
         entry.texture.needsUpdate = true;
       }
@@ -2449,10 +2412,16 @@ function stopVideoPull() {
   }
 }
 
-function useSharedVideoTexture(src, active = true) {
+function useSharedVideoTexture(src, active = true, startDelay = 0, pullEnabled = true) {
   const [texture, setTexture] = useState(() => sharedVideoTextureCache.get(src)?.texture || null);
   const activeRef = useRef(active);
   activeRef.current = active;
+  const playTimerRef = useRef(null);
+
+  useEffect(() => {
+    const entry = sharedVideoTextureCache.get(src);
+    if (entry) entry.pullEnabled = pullEnabled;
+  }, [src, pullEnabled]);
 
   useEffect(() => {
     if (!src) {
@@ -2520,10 +2489,26 @@ function useSharedVideoTexture(src, active = true) {
         playResult.catch(() => {});
       }
     };
+    const schedulePlay = () => {
+      if (!activeRef.current) return;
+      if (startDelay <= 0) { tryPlay(); return; }
+      if (playTimerRef.current !== null) return;
+      playTimerRef.current = setTimeout(() => {
+        playTimerRef.current = null;
+        tryPlay();
+      }, startDelay);
+    };
+    const cancelScheduledPlay = () => {
+      if (playTimerRef.current !== null) {
+        clearTimeout(playTimerRef.current);
+        playTimerRef.current = null;
+      }
+    };
 const syncActive = () => {
       if (activeRef.current) {
-        tryPlay();
+        schedulePlay();
       } else {
+        cancelScheduledPlay();
         entry.video.pause();
       }
     };
@@ -2541,7 +2526,7 @@ entry.__onPlaying = () => {
     entry.video.load();
 
     const resumeOnGesture = () => {
-      if (activeRef.current) { tryPlay(); drawFrame(); }
+      if (activeRef.current) { schedulePlay(); drawFrame(); }
       window.removeEventListener('pointerdown', resumeOnGesture);
       window.removeEventListener('touchstart', resumeOnGesture);
     };
@@ -2556,6 +2541,10 @@ entry.__onPlaying = () => {
         entry.video.pause();
         entry.video.removeAttribute('src');
         entry.video.load();
+      }
+      if (playTimerRef.current !== null) {
+        clearTimeout(playTimerRef.current);
+        playTimerRef.current = null;
       }
       entry.video.removeEventListener('canplay', syncActive);
       entry.video.removeEventListener('loadeddata', syncActive);
@@ -2573,6 +2562,12 @@ entry.__onPlaying = () => {
     if (!src) return undefined;
     const entry = sharedVideoTextureCache.get(src);
     if (!entry) return undefined;
+    const startPlayback = () => {
+      const playResult = entry.video.play();
+      if (playResult && typeof playResult.catch === 'function') {
+        playResult.catch(() => {});
+      }
+    };
     if (active) {
       activeVideoEntries.add(entry);
       startVideoPull();
@@ -2581,25 +2576,33 @@ entry.__onPlaying = () => {
         entry.ctx.drawImage(entry.video, 0, 0, entry.canvas.width, entry.canvas.height);
         entry.texture.needsUpdate = true;
       }
-      const playResult = entry.video.play();
-      if (playResult && typeof playResult.catch === 'function') {
-        playResult.catch(() => {});
+      if (startDelay <= 0) {
+        startPlayback();
+      } else if (playTimerRef.current === null) {
+        playTimerRef.current = setTimeout(() => {
+          playTimerRef.current = null;
+          if (activeRef.current) startPlayback();
+        }, startDelay);
       }
       entry.video.addEventListener('playing', entry.__onPlaying);
     } else {
+      if (playTimerRef.current !== null) {
+        clearTimeout(playTimerRef.current);
+        playTimerRef.current = null;
+      }
       entry.video.pause();
       entry.video.removeEventListener('playing', entry.__onPlaying);
       activeVideoEntries.delete(entry);
       if (activeVideoEntries.size === 0) stopVideoPull();
     }
     return undefined;
-  }, [src, active]);
+  }, [src, active, startDelay]);
 
   return texture;
 }
 
-function CardVideoPlane({ src, size, opacity = 0.32, z = 0.006, renderOrder = 1, overlay = 0, active = true }) {
-  const texture = useSharedVideoTexture(src, active);
+function CardVideoPlane({ src, size, opacity = 0.32, z = 0.006, renderOrder = 1, overlay = 0, active = true, startDelay = 0, pull = true }) {
+  const texture = useSharedVideoTexture(src, active, startDelay, pull);
   if (!texture) return null;
 
   return (
@@ -2643,30 +2646,72 @@ const sphereData = [
         { label: "Dynamic Websites", tag: "DYNAMIC", text: "Content-driven builds with CMS power, live updates and real user interaction.", video: "dynamic.mp4" },
         { label: "E-commerce Websites", tag: "E-COMMERCE", text: "Complete storefronts with secure checkout, product flows and conversion focus.", video: "ecommerce.mp4" },
       ] },
-      { title: "Lead Generation", text: "Targeted pipelines that keep your funnel full." },
-      { title: "Digital Marketing / SEO", text: "Search and social strategies engineered to grow reach." },
-      { title: "Custom Software Development", text: "Tailored systems built around how your business works." },
-      { title: "E-commerce Solutions", text: "Storefronts and flows designed to turn visitors into buyers." },
-      { title: "Gen AI and ML Solutions", text: "Intelligent models that automate, predict, and scale." },
-      { title: "Ads Management", text: "Paid campaigns tuned for maximum return on every spend." },
+      { title: "Lead Generation", text: "Targeted pipelines that keep your funnel full.", sections: [
+        { label: "Landing Page Systems", tag: "LANDERS", text: "High-converting pages built around single offers and clear calls to action.", video: "landing.mp4" },
+        { label: "Capture Automation", tag: "AUTOMATION", text: "Forms, segmentation and follow-up that never let a lead go cold.", video: "capture.mp4" },
+        { label: "Qualification Scoring", tag: "LEAD SCORING", text: "Route the hottest prospects to sales the moment they show intent.", video: "scoring.mp4" },
+      ] },
+      { title: "Digital Marketing / SEO", text: "Search and social strategies engineered to grow reach.", sections: [
+        { label: "Technical SEO", tag: "SEO", text: "Site architecture, speed and indexing tuned for sustained rankings.", video: "techseo.mp4" },
+        { label: "Content Engine", tag: "CONTENT", text: "A publishing rhythm that compounds authority month after month.", video: "content.mp4" },
+        { label: "Social Growth", tag: "SOCIAL", text: "Organic and paid social that builds communities and converts them.", video: "social.mp4" },
+      ] },
+      { title: "Custom Software Development", text: "Tailored systems built around how your business works.", sections: [
+        { label: "Platforms & Portals", tag: "PLATFORMS", text: "Dedicated web and internal platforms designed around your workflows.", video: "platform.mp4" },
+        { label: "API & Integration", tag: "INTEGRATION", text: "Connect legacy tools and modern services into one seamless stack.", video: "api.mp4" },
+        { label: "Mobile & Desktop", tag: "APPS", text: "Native and cross-platform apps that put your product in users' hands.", video: "apps.mp4" },
+      ] },
+      { title: "E-commerce Solutions", text: "Storefronts and flows designed to turn visitors into buyers.", sections: [
+        { label: "Storefront Build", tag: "STORE", text: "Merchant-optimized stores that load fast and look premium.", video: "store.mp4" },
+        { label: "Checkout Optimization", tag: "CONVERSION", text: "Friction-free checkout engineered to lift order value.", video: "checkout.mp4" },
+        { label: "Retention & Loyalty", tag: "RETENTION", text: "Subscriptions, reorders and loyalty mechanics that grow LTV.", video: "loyalty.mp4" },
+      ] },
+      { title: "Gen AI and ML Solutions", text: "Intelligent models that automate, predict, and scale.", sections: [
+        { label: "Predictive Analytics", tag: "ML", text: "Forecasts for demand, churn and pricing powered by your data.", video: "predict.mp4" },
+        { label: "AI Content Systems", tag: "GEN AI", text: "On-brand content at scale with human review built in.", video: "genai.mp4" },
+        { label: "Custom Model Training", tag: "MODELS", text: "Models trained on your business, not off-the-shelf guesses.", video: "models.mp4" },
+      ] },
+      { title: "Ads Management", text: "Paid campaigns tuned for maximum return on every spend.", sections: [
+        { label: "Performance Campaigns", tag: "PPC", text: "Search, social and display buying managed for ROAS.", video: "ppc.mp4" },
+        { label: "Creative Testing", tag: "CREATIVE", text: "Systematic tests that find winning ads before the budget burns.", video: "creativetest.mp4" },
+        { label: "Growth Loops", tag: "SCALE", text: "Data-feedback loops that scale spend only where it converts.", video: "growth.mp4" },
+      ] },
     ],
   },
   {
     title: "Proprietary", subtitle: "Products", color: "255, 68, 136", stairIndex: 1,
     items: [
-      { title: "AI Agents For Workflow Automations", text: "Autonomous agents that remove busywork." },
-      { title: "CRM Dashboards", text: "Your entire pipeline, one clear view." },
-      { title: "Billing Software", text: "Payments, invoices and subscriptions made simple." },
-      { title: "Intelligent Chatbots", text: "AI support that answers instantly, 24/7." },
+      { title: "AI Agents For Workflow Automations", text: "Autonomous agents that remove busywork.", sections: [
+        { label: "Task Automation", tag: "AGENTS", text: "Self-driving pipelines that handle data entry, approvals and follow-ups.", video: "agents.mp4" },
+        { label: "Process Orchestration", tag: "ORCHESTRATION", text: "Connect your tools so work flows end-to-end without human hand-offs.", video: "orchestrate.mp4" },
+        { label: "Human In The Loop", tag: "GUARDRAILS", text: "Smart checkpoints that keep AI fast but always under your control.", video: "hiltl.mp4" },
+      ] },
+      { title: "CRM Dashboards", text: "Your entire pipeline, one clear view.", sections: [
+        { label: "Unified Pipeline", tag: "PIPELINE", text: "Deals, leads and follow-ups consolidated into a single live board.", video: "crm.mp4" },
+        { label: "Automated Insights", tag: "INSIGHTS", text: "AI-generated summaries that surface what to do next.", video: "crminsights.mp4" },
+        { label: "Team Collaboration", tag: "TEAMS", text: "Shared views and roles so everyone knows their next step.", video: "crmteam.mp4" },
+      ] },
+      { title: "Billing Software", text: "Payments, invoices and subscriptions made simple.", sections: [
+        { label: "Subscription Billing", tag: "SUBSCRIPTIONS", text: "Recurring revenue handled automatically with proration and upgrades.", video: "billing.mp4" },
+        { label: "Invoicing Suite", tag: "INVOICES", text: "Branded invoices, reminders and payment links in one flow.", video: "invoices.mp4" },
+        { label: "Revenue Analytics", tag: "ANALYTICS", text: "MRR, churn and dunning metrics at a glance.", video: "billinganalytics.mp4" },
+      ] },
+      { title: "Intelligent Chatbots", text: "AI support that answers instantly, 24/7.", sections: [
+        { label: "Instant Answers", tag: "SUPPORT", text: "Trained on your docs and FAQs to resolve tickets before they escalate.", video: "chatbot.mp4" },
+        { label: "Human Handoff", tag: "ESCALATION", text: "Seamless transfer to your team with full conversation context.", video: "handoff.mp4" },
+        { label: "Conversation Analytics", tag: "ANALYTICS", text: "Understand what customers ask and where they drop off.", video: "chatanalytics.mp4" },
+      ] },
     ],
   },
-  {
+{
     title: "Why", subtitle: "Cosmichameleon", color: "170, 90, 255", stairIndex: 2,
     items: [
       { title: "Strategies Built For You", text: "No templates — every plan is custom." },
       { title: "Data Driven Decisions", text: "We let the numbers guide the way." },
       { title: "Creative Innovation", text: "Fresh ideas engineered to stand out." },
       { title: "Reliability", text: "A partner you can count on, always." },
+      { title: "Speed To Market", text: "Launch faster than your competitors." },
+      { title: "End To End Ownership", text: "Strategy, build, launch and growth under one roof." },
     ],
   },
   {
@@ -2677,6 +2722,7 @@ const sphereData = [
       { title: "Short Form Video Mastery", text: "Reels and shorts that actually convert." },
       { title: "Data Driven Storytelling", text: "Narratives built on real performance data." },
       { title: "Platform Algorithm Evolution", text: "Staying ahead as the algorithms shift." },
+      { title: "Performance Creative", text: "Making every impression work harder." },
     ],
   },
 ];
@@ -2691,25 +2737,14 @@ const SERVICE_ITEM_COLORS = [
   '126, 255, 90',
 ];
 
-function DNAHelix({ journey, mouseYRef, view }) {
+function DNAHelix({ journey, mouseYRef }) {
   const ref = useRef();
   const fadeRef = useRef(1);
-  const scroll = useScroll();
 
   useFrame((state, delta) => {
     if (!ref.current) return;
     const target = journey ? DNA_OFFSET + DNA_JOURNEY_SHIFT : DNA_OFFSET;
     ref.current.position.x = THREE.MathUtils.lerp(ref.current.position.x, target, 1 - Math.exp(-delta * 2.2));
-
-    const offset = scroll?.offset || 0;
-    let sectionOpacity = 1;
-    if (view === 'default' && offset >= 0.06 && offset < 0.12) {
-      sectionOpacity = 1 - smoothstep(0.06, 0.12, offset);
-    } else if (view === 'default' && offset >= 0.12 && offset <= 0.24) {
-      sectionOpacity = 0;
-    } else if (view === 'default' && offset > 0.24 && offset <= 0.32) {
-      sectionOpacity = smoothstep(0.24, 0.32, offset);
-    }
 
     let opacity = 1;
     if (journey) {
@@ -2718,7 +2753,7 @@ function DNAHelix({ journey, mouseYRef, view }) {
       const walkBase = THREE.MathUtils.clamp((JOURNEY_CAM_X - state.camera.position.x) / 12, 0, 1);
       opacity = THREE.MathUtils.clamp(Math.max(walkBase, hoverReveal), 0, 1);
     }
-    fadeRef.current = THREE.MathUtils.lerp(fadeRef.current, opacity * sectionOpacity, 1 - Math.exp(-delta * 6));
+    fadeRef.current = THREE.MathUtils.lerp(fadeRef.current, opacity, 1 - Math.exp(-delta * 6));
 
     ref.current.traverse((o) => {
       if (o.material) {
@@ -2739,7 +2774,6 @@ export default function App() {
   const [journey, setJourney] = useState(null);
   const [selectedOption, setSelectedOption] = useState(null);
   const [activeView, setActiveView] = useState('default');
-  const adaptProgressRef = useRef(0);
   const mouseXRef = useRef(0);
   const mouseYRef = useRef(0);
   const suppressDocClickRef = useRef(false);
@@ -2783,7 +2817,7 @@ export default function App() {
     };
   }, []);
 
-  const defaultCards = [
+const defaultCards = [
     { title: '', subtitle: '', color: '56, 189, 248', kind: 'default', items: [] },
     { title: '', subtitle: '', color: '255, 68, 136', kind: 'default', items: [] },
     { title: '', subtitle: '', color: '170, 90, 255', kind: 'default', items: [] },
@@ -2839,7 +2873,7 @@ export default function App() {
 <ScrollControls pages={TOTAL_PAGES} horizontal damping={0.15} enabled={!journey} style={{ zIndex: 3 }}>
             <ScrollElBridge scrollElRef={scrollElRef} />
             <Galaxy length={DNA_LENGTH * 1.5} />
-            <DNAHelix journey={journey} mouseYRef={mouseYRef} view={activeView} />
+            <DNAHelix journey={journey} mouseYRef={mouseYRef} />
             {sceneCards.map((card, i) => (
                 <OrbitingCard
                   key={`${activeView}-${card.kind}-${i}`}
@@ -2873,39 +2907,6 @@ export default function App() {
             <Scroll html style={{ width: '100vw', height: '100vh', pointerEvents: journey ? 'none' : 'auto' }}>
 
               <HeroLogoSection />
-
-              {/* 2. ADAPT TRANSFORM DOMINATE (DNA breaks) */}
-              {activeView === 'default' && (
-                <ScrollSection
-                  scrollStart={0.08}
-                  scrollEnd={0.24}
-                  style={{
-                    position: 'absolute',
-                    top: '0vh',
-                    left: '80vw',
-                    width: '100vw',
-                    height: '100vh',
-                    textAlign: 'center',
-                    color: 'white',
-                  }}
-                >
-                  <div className="image-section image-section-adapt image-section-full">
-                    <div className="image-placeholder">
-                      <ParticleBg color="255, 140, 140" count={360} linkDistance={95} progressRef={adaptProgressRef} />
-                      <AdaptStage
-                        scrollStart={0.08}
-                        scrollEnd={0.24}
-                        progressRef={adaptProgressRef}
-                        blocks={[
-                          { word: 'Adapt', desc: 'We watch the market closely, read the signals early, and shift before the wave even begins to move.' },
-                          { word: 'Transform', desc: 'We rebuild your presence into something sharper, faster, more engaging, and built to win.' },
-                          { word: 'Dominate', desc: 'Consistent systems and creative edge put you ahead of the competition and keep you there.' },
-                        ]}
-                      />
-                    </div>
-                  </div>
-                </ScrollSection>
-              )}
 
               <ScrollSection
                 scrollStart={0.8}

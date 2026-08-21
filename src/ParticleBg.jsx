@@ -39,6 +39,7 @@ export default function ParticleBg({ color = '136, 204, 255', count = 60, linkDi
         let w, h, dpr;
         let particles = [];
         let visible = true;
+        const cachedRect = { left: 0, top: 0, width: 0, height: 0 };
 
         const sprites = LAYERS.map((layer) => makeSprite(color, layer));
         const hotSprites = LAYERS.map((layer) => makeSprite(color, layer, 1.8));
@@ -67,6 +68,10 @@ export default function ParticleBg({ color = '136, 204, 255', count = 60, linkDi
             dpr = Math.min(window.devicePixelRatio || 1, 1);
             w = rect.width;
             h = rect.height;
+            cachedRect.left = rect.left;
+            cachedRect.top = rect.top;
+            cachedRect.width = rect.width;
+            cachedRect.height = rect.height;
             canvas.width = Math.max(1, Math.floor(w * dpr));
             canvas.height = Math.max(1, Math.floor(h * dpr));
             ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -96,6 +101,9 @@ export default function ParticleBg({ color = '136, 204, 255', count = 60, linkDi
             }
         };
 
+        let linkPath = null;
+        let tickCount = 0;
+
         const tick = () => {
             if (!visible) {
                 raf = requestAnimationFrame(tick);
@@ -113,10 +121,9 @@ export default function ParticleBg({ color = '136, 204, 255', count = 60, linkDi
 
             ctx.clearRect(0, 0, w, h);
 
-            const rect = canvas.parentElement.getBoundingClientRect();
-            const mx = mouse.current.x - rect.left;
-            const my = mouse.current.y - rect.top;
-            const over = mx >= -40 && my >= -40 && mx <= rect.width + 40 && my <= rect.height + 40;
+            const mx = mouse.current.x - cachedRect.left;
+            const my = mouse.current.y - cachedRect.top;
+            const over = mx >= -40 && my >= -40 && mx <= cachedRect.width + 40 && my <= cachedRect.height + 40;
 
             for (const p of particles) {
                 const dxc = p.homeX - cx;
@@ -151,22 +158,26 @@ export default function ParticleBg({ color = '136, 204, 255', count = 60, linkDi
             }
 
             const lineAlpha = 0.1 + 0.08 * wConnect + (over ? 0.04 : 0);
-            ctx.strokeStyle = `rgba(${color}, ${lineAlpha})`;
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            for (let i = 0; i < particles.length; i++) {
-                const a = particles[i];
-                for (let j = i + 1; j < particles.length; j++) {
-                    const b = particles[j];
-                    const dx = a.x - b.x;
-                    const dy = a.y - b.y;
-                    if (dx * dx + dy * dy < linkD * linkD) {
-                        ctx.moveTo(a.x, a.y);
-                        ctx.lineTo(b.x, b.y);
+            tickCount += 1;
+            // Rebuild the O(n^2) link path only every other frame; re-stroke the cached path otherwise
+            if (tickCount % 2 === 1 || !linkPath) {
+                linkPath = new Path2D();
+                for (let i = 0; i < particles.length; i++) {
+                    const a = particles[i];
+                    for (let j = i + 1; j < particles.length; j++) {
+                        const b = particles[j];
+                        const dx = a.x - b.x;
+                        const dy = a.y - b.y;
+                        if (dx * dx + dy * dy < linkD * linkD) {
+                            linkPath.moveTo(a.x, a.y);
+                            linkPath.lineTo(b.x, b.y);
+                        }
                     }
                 }
             }
-            ctx.stroke();
+            ctx.strokeStyle = `rgba(${color}, ${lineAlpha})`;
+            ctx.lineWidth = 1;
+            ctx.stroke(linkPath);
 
             for (const p of particles) {
                 const lay = LAYERS[p.layer];

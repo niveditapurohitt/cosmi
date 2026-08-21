@@ -3,14 +3,6 @@ import { useFrame } from '@react-three/fiber';
 import { useScroll } from '@react-three/drei';
 import * as THREE from 'three';
 
-function windowFade(o, os, oe, is, ie) {
-    if (o <= os) return 1;
-    if (o < oe) return 1 - (o - os) / (oe - os);
-    if (o <= is) return 0;
-    if (o < ie) return (o - is) / (ie - is);
-    return 1;
-}
-
 // Generate a perfect circle texture to fix the "boxy" WebGL issue
 const circleTexture = (() => {
     const canvas = document.createElement('canvas');
@@ -59,10 +51,8 @@ export default function Galaxy({ length = 150 }) {
 
         if (scroll && materialRef.current) {
             const offset = scroll.offset;
-            const adaptFade = windowFade(offset, 0.08, 0.13, 0.2, 0.25);
             const launchFade = offset <= 0.78 ? 1 : Math.max(0, 1 - (offset - 0.78) / 0.06);
-            const target = Math.min(adaptFade, launchFade);
-            currentOpacity.current = THREE.MathUtils.lerp(currentOpacity.current, target, 0.08);
+            currentOpacity.current = THREE.MathUtils.lerp(currentOpacity.current, launchFade, 0.08);
             materialRef.current.opacity = currentOpacity.current;
         }
     });
