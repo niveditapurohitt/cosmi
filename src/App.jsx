@@ -1,5 +1,5 @@
 ﻿import React, { useRef, useState, useEffect } from 'react';
-import ReactDOM from 'react-dom';
+import { createPortal } from 'react-dom';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { ScrollControls, Scroll, useScroll } from '@react-three/drei';
 import * as THREE from 'three';
@@ -476,6 +476,131 @@ function CameraTracker({ length, journey, mouseXRef, mouseYRef }) {
   return null;
 }
 
+function AboutUsOverlay({ onClose }) {
+  const [entered, setEntered] = useState(false);
+  const [counters, setCounters] = useState([0, 0, 0, 0]);
+  const countersRef = useRef([0, 0, 0, 0]);
+  const startedRef = useRef(false);
+
+  const stats = [
+    { value: 150, suffix: '+', label: 'Projects Delivered' },
+    { value: 98, suffix: '%', label: 'Client Retention' },
+    { value: 12, suffix: '+', label: 'Countries Served' },
+    { value: 50, suffix: '+', label: 'Team Members' },
+  ];
+
+  useEffect(() => {
+    const t = setTimeout(() => setEntered(true), 100);
+    return () => clearTimeout(t);
+  }, []);
+
+  useEffect(() => {
+    if (!entered) return;
+    const delay = setTimeout(() => { startedRef.current = true; }, 600);
+    const id = setInterval(() => {
+      if (!startedRef.current) return;
+      let anyChanged = false;
+      const next = countersRef.current.map((cur, i) => {
+        if (cur >= stats[i].value) return cur;
+        anyChanged = true;
+        return Math.min(stats[i].value, cur + Math.max(1, Math.ceil(stats[i].value * 0.05)));
+      });
+      if (anyChanged) {
+        countersRef.current = next;
+        setCounters([...next]);
+      }
+    }, 35);
+    return () => { clearTimeout(delay); clearInterval(id); };
+  }, [entered]);
+
+  useEffect(() => {
+    const handler = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [onClose]);
+
+  return createPortal(
+    <div
+      className={`about-overlay ${entered ? 'about-overlay-entered' : ''}`}
+      onClick={onClose}
+    >
+      <button className="about-close" onClick={onClose}>&times;</button>
+      <div
+        className={`about-glass-panel about-panel-animated ${entered ? 'about-panel-entered' : ''}`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="about-scan-line about-scan-animated" />
+        <div className="about-grid-bg" />
+
+        <div className="about-label">Who We Are</div>
+        <h2 className="about-title">
+          We craft <span className="about-highlight">digital experiences</span> that move people.
+        </h2>
+
+        <div className="about-text-blocks">
+          <div className={`about-text-block ${entered ? 'about-text-entered' : ''}`} style={{ transitionDelay: '0.3s' }}>
+            <p>
+              CosmiChameleon is a next-generation digital agency at the intersection of strategy,
+              design, and cutting-edge technology. We partner with ambitious brands to build
+              products that don't just work — they captivate, convert, and scale.
+            </p>
+          </div>
+          <div className={`about-text-block ${entered ? 'about-text-entered' : ''}`} style={{ transitionDelay: '0.5s' }}>
+            <p>
+              Our team spans 12+ countries, united by a shared obsession with craft. From AI-driven
+              platforms to immersive web experiences, we turn complex challenges into elegant
+              solutions. Every project is a chance to push boundaries, every pixel a deliberate choice.
+            </p>
+          </div>
+          <div className={`about-text-block ${entered ? 'about-text-entered' : ''}`} style={{ transitionDelay: '0.7s' }}>
+            <p>
+              We don't follow the future — we build it. Whether it's a startup MVP or an enterprise
+              transformation, CosmiChameleon brings the same relentless energy and technical precision
+              to every engagement.
+            </p>
+          </div>
+        </div>
+
+        <div className="about-divider" />
+
+        <div className="about-values">
+          <div className={`about-value-item ${entered ? 'about-value-entered' : ''}`} style={{ transitionDelay: '0.8s' }}>
+            <span className="about-value-icon">&#9670;</span>
+            <div>
+              <h4>Innovation First</h4>
+              <p>We challenge convention and explore uncharted territory with every project.</p>
+            </div>
+          </div>
+          <div className={`about-value-item ${entered ? 'about-value-entered' : ''}`} style={{ transitionDelay: '0.95s' }}>
+            <span className="about-value-icon">&#9670;</span>
+            <div>
+              <h4>Relentless Quality</h4>
+              <p>Every line of code, every design choice — held to the highest standard.</p>
+            </div>
+          </div>
+          <div className={`about-value-item ${entered ? 'about-value-entered' : ''}`} style={{ transitionDelay: '1.1s' }}>
+            <span className="about-value-icon">&#9670;</span>
+            <div>
+              <h4>Global Reach</h4>
+              <p>12+ countries, one unified vision — building without borders.</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="about-stats">
+          {stats.map((stat, i) => (
+            <div key={i} className={`about-stat-item ${entered ? 'about-stat-entered' : ''}`} style={{ transitionDelay: `${1.2 + i * 0.1}s` }}>
+              <span className="about-stat-value">{counters[i]}{stat.suffix}</span>
+              <span className="about-stat-label">{stat.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
 function WhatsAppForm({ onClose }) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -489,7 +614,7 @@ function WhatsAppForm({ onClose }) {
     onClose();
   };
 
-  return ReactDOM.createPortal(
+  return createPortal(
     <div className="whatsapp-overlay" onClick={onClose}>
       <div className="whatsapp-modal" onClick={(e) => e.stopPropagation()}>
         <button className="whatsapp-close" onClick={onClose}>&times;</button>
@@ -2854,6 +2979,7 @@ export default function App() {
   const [journey, setJourney] = useState(null);
   const [selectedOption, setSelectedOption] = useState(null);
   const [activeView, setActiveView] = useState('default');
+  const [showAbout, setShowAbout] = useState(false);
   const mouseXRef = useRef(0);
   const mouseYRef = useRef(0);
   const suppressDocClickRef = useRef(false);
@@ -2934,6 +3060,7 @@ const defaultCards = [
 
   const totalSceneCards = sceneCards.length;
   return (
+    <>
     <div className="app-shell">
       <div className="scene-ambient" aria-hidden="true" />
       <div className="scene-vignette" aria-hidden="true" />
@@ -3034,8 +3161,16 @@ const defaultCards = [
         >
           Our Products
         </button>
+        <button
+          className="view-btn"
+          onClick={() => setShowAbout(true)}
+        >
+          About Us
+        </button>
       </div>
     </div>
+    {showAbout && <AboutUsOverlay onClose={() => setShowAbout(false)} />}
+    </>
   );
 }
 
