@@ -563,7 +563,9 @@ function ScrollSection({ children, scrollStart, scrollEnd, persist = false, styl
 
 function HeroLogoSection() {
   const ref = useRef();
+  const cardRef = useRef();
   const lastOpacityRef = useRef(-1);
+  const lastRotRef = useRef(0);
   const scroll = useScroll();
 
   useFrame(() => {
@@ -574,6 +576,13 @@ function HeroLogoSection() {
       lastOpacityRef.current = fade;
       ref.current.style.opacity = fade.toFixed(3);
     }
+    if (cardRef.current) {
+      const rot = smoothstep(0.0, 0.06, offset) * 180;
+      if (Math.abs(rot - lastRotRef.current) > 0.1) {
+        lastRotRef.current = rot;
+        cardRef.current.style.transform = `rotateY(${rot}deg)`;
+      }
+    }
   });
 
   return (
@@ -582,7 +591,33 @@ function HeroLogoSection() {
       className="hero-logo-section"
       style={{ opacity: 1 }}
     >
-      <img className="hero-logo" src="/hero-logo.png" alt="Cosmichameleon" />
+      <div className="hero-card-wrap" ref={cardRef}>
+        <div className="hero-card">
+          <div className="hero-orbit-dot" style={{ '--orbit-r': '140px', '--orbit-dur': '6s', '--orbit-delay': '0s', '--dot-color': 'rgba(0, 229, 255, 0.9)' }} />
+          <div className="hero-orbit-dot" style={{ '--orbit-r': '155px', '--orbit-dur': '8s', '--orbit-delay': '-2s', '--dot-color': 'rgba(170, 90, 255, 0.85)' }} />
+          <div className="hero-orbit-dot" style={{ '--orbit-r': '130px', '--orbit-dur': '5s', '--orbit-delay': '-3.5s', '--dot-color': 'rgba(255, 255, 255, 0.7)' }} />
+          <div className="hero-orbit-dot" style={{ '--orbit-r': '165px', '--orbit-dur': '9s', '--orbit-delay': '-1s', '--dot-color': 'rgba(0, 229, 255, 0.6)' }} />
+          <div className="hero-orbit-dot" style={{ '--orbit-r': '125px', '--orbit-dur': '4.5s', '--orbit-delay': '-4s', '--dot-color': 'rgba(170, 90, 255, 0.55)' }} />
+          <div className="hero-orbit-dot" style={{ '--orbit-r': '175px', '--orbit-dur': '11s', '--orbit-delay': '-5s', '--dot-color': 'rgba(255, 255, 255, 0.45)' }} />
+          <div className="hero-orbit-dot" style={{ '--orbit-r': '115px', '--orbit-dur': '3.8s', '--orbit-delay': '-2.5s', '--dot-color': 'rgba(0, 229, 255, 0.5)' }} />
+          <img className="hero-card-img" src="/hero-logo.png" alt="Cosmichameleon" />
+        </div>
+        <div className="hero-card-back">
+          <svg className="hero-card-back-svg" viewBox="0 0 260 260" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <path id="curveTop" d="M 3,135 A 138,138 0 0,1 257,135" fill="none" />
+              <path id="curveBottom" d="M 3,150 A 138,138 0 0,0 257,150" fill="none" />
+            </defs>
+            <text fontFamily="'Bungee', sans-serif" fontWeight="400" fontSize="38" fill="white" letterSpacing="3">
+              <textPath href="#curveTop" startOffset="50%" textAnchor="middle">Adapt</textPath>
+            </text>
+            <text x="130" y="135" fontFamily="'Bungee', sans-serif" fontWeight="400" fontSize="34" fill="white" textAnchor="middle" letterSpacing="4">Transform</text>
+            <text fontFamily="'Bungee', sans-serif" fontWeight="400" fontSize="38" fill="white" letterSpacing="3">
+              <textPath href="#curveBottom" startOffset="50%" textAnchor="middle">Dominate</textPath>
+            </text>
+          </svg>
+        </div>
+      </div>
     </div>
   );
 }
@@ -1554,10 +1589,9 @@ const optionTexs = useOptionTextures(items, color);
 
   const isJourneying = journey !== null;
   const isJourneyTarget = isJourneying && journey.card === stairIndex;
-  const isServicesMode = view === 'services' && stairIndex === 0;
   const mirrorSign = stairIndex >= 2 ? -1 : 1;
-const mainVideoActive = !isServicesMode && !isJourneying && !revealed && nearPlay;
-  const subVideosActive = isServicesMode && !isJourneying && nearVideo;
+const mainVideoActive = !isJourneying && !revealed && nearPlay;
+  const subVideosActive = false;
   const optionVideosActive = isJourneyTarget && nearVideo;
 
   useFrame((state, delta) => {
@@ -1772,8 +1806,6 @@ if (subBodyRefs.current[i]) subBodyRefs.current[i].visible = false;
 
     const eased = 1 - Math.pow(1 - entryT, 3);
 
-    const dnaRotation = offset * Math.PI * 10;
-
     const camRel = state.camera.position.x - worldX;
     const swingTarget = THREE.MathUtils.clamp(-camRel * 0.22, -Math.PI / 2, Math.PI / 2);
     angleRef.current = THREE.MathUtils.lerp(angleRef.current, swingTarget, 1 - Math.exp(-delta * 4));
@@ -1785,78 +1817,7 @@ if (subBodyRefs.current[i]) subBodyRefs.current[i].visible = false;
     posXRef.current = THREE.MathUtils.lerp(posXRef.current, worldX, 0.1);
     rotYRef.current = THREE.MathUtils.lerp(rotYRef.current, 0, 0.1);
 
-    if (isServicesMode) {
-      posYZRef.current.y = THREE.MathUtils.lerp(posYZRef.current.y, 0, 0.1);
-      posYZRef.current.z = THREE.MathUtils.lerp(posYZRef.current.z, 0, 0.1);
-      groupRef.current.position.x = posXRef.current + (1 - eased) * flyIn;
-      groupRef.current.position.y = posYZRef.current.y;
-      groupRef.current.position.z = posYZRef.current.z;
-      groupRef.current.rotation.set(0, rotYRef.current, 0);
-      groupRef.current.scale.setScalar(1);
-      meshRef.current.visible = false;
-
-      for (let i = 0; i < subRefs.current.length; i++) {
-        const g = subRefs.current[i];
-        const body = subBodyRefs.current[i];
-        const face = subFaceRefs.current[i];
-const t = subTextRefs.current[i];
-        if (!g) continue;
-        const itemColor = serviceItemAccents ? serviceItemAccents[i] : color;
-        g.visible = true;
-        if (body) body.visible = true;
-        if (face) face.visible = true;
-        if (subTitleBackRefs.current[i]) subTitleBackRefs.current[i].visible = serviceTitleBoost;
-        if (t) t.visible = true;
-        const hover = !!subHoverRef.current[i];
-        const tex = hover ? cardTexs.hover[i] : cardTexs.normal[i];
-        if (face && tex && face.material.map !== tex) {
-          face.material.map = tex;
-          face.material.needsUpdate = true;
-        }
-const count = subRefs.current.length;
-        const phase = (i / count) * Math.PI * 2;
-        const subVisual = phase - dnaRotation;
-        const centeredIndex = i - (count - 1) / 2;
-        const subLocalX = (count > 1 ? centeredIndex * SUB_CARD_STEP : 0) + SUB_CARD_OFFSET;
-        g.position.x = THREE.MathUtils.lerp(g.position.x, subLocalX, 0.09);
-        g.position.y = THREE.MathUtils.lerp(g.position.y, Math.sin(subVisual) * SUB_ORBIT_RADIUS, 0.09);
-        g.position.z = THREE.MathUtils.lerp(g.position.z, Math.cos(subVisual) * SUB_ORBIT_RADIUS * 0.9, 0.09);
-        const rotTarget = -subVisual;
-        let rDiff = rotTarget - g.rotation.x;
-        rDiff = ((rDiff + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
-        g.rotation.x += rDiff * 0.09;
-        const subFacing = Math.cos(subVisual);
-        const subBase = 0.7 + (subFacing * 0.5 + 0.5) * 0.5;
-        const subTarget = subBase * (hover ? 1.1 : 1) * SUB_CARD_SCALE;
-        g.scale.x = THREE.MathUtils.lerp(g.scale.x, subTarget, 0.12);
-        g.scale.y = THREE.MathUtils.lerp(g.scale.y, subTarget, 0.12);
-        g.scale.z = THREE.MathUtils.lerp(g.scale.z, subTarget, 0.12);
-
-        if (body) {
-          body.material.color.set(`rgb(${itemColor})`);
-          body.material.emissive.set(`rgb(${itemColor})`);
-          body.material.opacity = eased * (hover ? 0.94 : 0.88);
-        }
-        if (face) {
-          face.material.opacity = eased;
-        }
-
-        if (t) {
-          const textTex = hover ? cardTextTexs.hover[i] : cardTextTexs.normal[i];
-          if (textTex && t.material.map !== textTex) {
-            t.material.map = textTex;
-            t.material.needsUpdate = true;
-          }
-          t.material.opacity = eased;
-          t.material.depthTest = false;
-          const textScale = hover ? (serviceTitleBoost ? 1.12 : 1.04) : (serviceTitleBoost ? 1.06 : 1);
-          t.scale.x = THREE.MathUtils.lerp(t.scale.x, textScale, 0.12);
-          t.scale.y = THREE.MathUtils.lerp(t.scale.y, textScale, 0.12);
-t.scale.z = THREE.MathUtils.lerp(t.scale.z, textScale, 0.12);
-        }
-      }
-    } else {
-      posYZRef.current.y = THREE.MathUtils.lerp(posYZRef.current.y, orbitY, 0.1);
+    posYZRef.current.y = THREE.MathUtils.lerp(posYZRef.current.y, orbitY, 0.1);
       posYZRef.current.z = THREE.MathUtils.lerp(posYZRef.current.z, orbitZ, 0.1);
       groupRef.current.position.x = posXRef.current + (1 - eased) * flyIn;
       groupRef.current.position.y = posYZRef.current.y;
@@ -1895,7 +1856,6 @@ t.scale.z = THREE.MathUtils.lerp(t.scale.z, textScale, 0.12);
       if (mainTitleRef.current) {
 mainTitleRef.current.material.opacity = THREE.MathUtils.lerp(mainTitleRef.current.material.opacity, eased, 0.1);
       }
-    }
 
     if (glitchActiveRef.current) {
       glitchRef.current = Math.min(1, glitchRef.current + delta / 0.85);
@@ -2474,23 +2434,23 @@ function useSharedVideoTexture(src, active = true, startDelay = 0, pullEnabled =
         }
       };
       sharedVideoTextureCache.set(src, entry);
+    } else if (!entry.video.getAttribute('src')) {
+      entry.video.src = encodedSrc;
+      entry.video.load();
     }
     entry.activeCount += 1;
 
     const drawFrame = () => {
-      if (!activeRef.current) return;
       entry.ctx.drawImage(entry.video, 0, 0, entry.canvas.width, entry.canvas.height);
       entry.texture.needsUpdate = true;
     };
     const tryPlay = () => {
-      if (!activeRef.current) return;
       const playResult = entry.video.play();
       if (playResult && typeof playResult.catch === 'function') {
         playResult.catch(() => {});
       }
     };
     const schedulePlay = () => {
-      if (!activeRef.current) return;
       if (startDelay <= 0) { tryPlay(); return; }
       if (playTimerRef.current !== null) return;
       playTimerRef.current = setTimeout(() => {
@@ -2509,7 +2469,6 @@ const syncActive = () => {
         schedulePlay();
       } else {
         cancelScheduledPlay();
-        entry.video.pause();
       }
     };
     syncActive();
@@ -2526,12 +2485,11 @@ entry.__onPlaying = () => {
     entry.video.load();
 
     const resumeOnGesture = () => {
-      if (activeRef.current) { schedulePlay(); drawFrame(); }
-      window.removeEventListener('pointerdown', resumeOnGesture);
-      window.removeEventListener('touchstart', resumeOnGesture);
+      drawFrame();
+      schedulePlay();
     };
-    window.addEventListener('pointerdown', resumeOnGesture, { once: true });
-    window.addEventListener('touchstart', resumeOnGesture, { once: true });
+    window.addEventListener('pointerdown', resumeOnGesture);
+    window.addEventListener('touchstart', resumeOnGesture);
 
     setTexture(entry.texture);
 
@@ -2837,16 +2795,14 @@ const defaultCards = [
     stairIndex: i,
   }));
 
-  const serviceCards = [
-    {
-      title: sphereData[0].title,
-      subtitle: sphereData[0].subtitle,
-      color: sphereData[0].color,
-      kind: 'service',
-      items: sphereData[0].items,
-      stairIndex: 0,
-    },
-  ];
+  const serviceCards = sphereData[0].items.map((item, i) => ({
+    title: item.title,
+    subtitle: sphereData[0].subtitle,
+    color: SERVICE_ITEM_COLORS[i % SERVICE_ITEM_COLORS.length],
+    kind: 'service',
+    items: [],
+    stairIndex: i,
+  }));
 
   const sceneCards = activeView === 'services'
     ? serviceCards
@@ -2933,10 +2889,7 @@ const defaultCards = [
           </ScrollControls>
         </Canvas>
       </div>
-      <div className="hero-brand" aria-label="Cosmichameleon">
-        <img className="hero-logo" src="/hero-logo.png" alt="Cosmichameleon" />
-        <div className="hero-subtitle-line" />
-      </div>
+
       {journey && (
         <button className="journey-back" onClick={() => { setSelectedOption(null); setJourney(null); }}>Back</button>
       )}
