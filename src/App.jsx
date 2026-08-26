@@ -1,4 +1,5 @@
 ﻿import React, { useRef, useState, useEffect } from 'react';
+import ReactDOM from 'react-dom';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { ScrollControls, Scroll, useScroll } from '@react-three/drei';
 import * as THREE from 'three';
@@ -475,10 +476,64 @@ function CameraTracker({ length, journey, mouseXRef, mouseYRef }) {
   return null;
 }
 
+function WhatsAppForm({ onClose }) {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [message, setMessage] = useState('');
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const text = `Hi, I'm ${name} (${email}).\n\n${message}`;
+    const encoded = encodeURIComponent(text);
+    window.open(`https://wa.me/916376064290?text=${encoded}`, '_blank');
+    onClose();
+  };
+
+  return ReactDOM.createPortal(
+    <div className="whatsapp-overlay" onClick={onClose}>
+      <div className="whatsapp-modal" onClick={(e) => e.stopPropagation()}>
+        <button className="whatsapp-close" onClick={onClose}>&times;</button>
+        <h3 className="whatsapp-heading">Send us a message on WhatsApp</h3>
+        <form onSubmit={handleSubmit} className="whatsapp-form">
+          <input
+            type="text"
+            placeholder="Your Name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+            className="whatsapp-input"
+          />
+          <input
+            type="email"
+            placeholder="Your Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            className="whatsapp-input"
+          />
+          <textarea
+            placeholder="Your Message"
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            required
+            rows={4}
+            className="whatsapp-textarea"
+          />
+          <button type="submit" className="whatsapp-submit">Open WhatsApp</button>
+        </form>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
 function LaunchEvolutionStage({ scrollStart, scrollEnd }) {
   const scroll = useScroll();
   const particlesRef = useRef();
   const copyRef = useRef();
+  const captionRef = useRef();
+  const typedRef = useRef(false);
+  const [showWhatsApp, setShowWhatsApp] = useState(false);
 
   useFrame(() => {
     const offset = scroll.offset;
@@ -493,6 +548,10 @@ function LaunchEvolutionStage({ scrollStart, scrollEnd }) {
     if (copyRef.current) {
       copyRef.current.style.opacity = titleFade.toFixed(3);
       copyRef.current.style.transform = `translate3d(${titleShift.toFixed(2)}px, ${titleSlide.toFixed(2)}px, 0)`;
+    }
+    if (captionRef.current && !typedRef.current && progress > 0.85) {
+      typedRef.current = true;
+      captionRef.current.classList.add('typing-active');
     }
   });
 
@@ -512,9 +571,37 @@ function LaunchEvolutionStage({ scrollStart, scrollEnd }) {
           <div className="image-block">
             <span className="image-label">Evolution</span>
           </div>
-          <p className="image-caption">The future starts here</p>
+          <p ref={captionRef} className="image-caption typing-caption">The future starts here</p>
+          <div className="social-links">
+            <a href="https://instagram.com/yourhandle" target="_blank" rel="noopener noreferrer" className="social-link" title="Instagram">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="social-icon">
+                <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+                <circle cx="12" cy="12" r="5" />
+                <circle cx="17.5" cy="6.5" r="1.5" fill="currentColor" stroke="none" />
+              </svg>
+            </a>
+            <a href="mailto:hello@cosmichameleon.com" className="social-link" title="Email">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="social-icon">
+                <rect x="2" y="4" width="20" height="16" rx="2" />
+                <polyline points="22,4 12,13 2,4" />
+              </svg>
+            </a>
+            <a href="https://linkedin.com/in/yourprofile" target="_blank" rel="noopener noreferrer" className="social-link" title="LinkedIn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="social-icon">
+                <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-4 0v7h-4v-7a6 6 0 0 1 6-6z" />
+                <rect x="2" y="9" width="4" height="12" />
+                <circle cx="4" cy="4" r="2" />
+              </svg>
+            </a>
+            <button onPointerDown={(e) => { e.stopPropagation(); setShowWhatsApp(true); }} className="social-link" title="WhatsApp">
+              <svg viewBox="0 0 24 24" fill="currentColor" className="social-icon">
+                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
+      {showWhatsApp && <WhatsAppForm onClose={() => setShowWhatsApp(false)} />}
     </div>
   );
 }
@@ -564,9 +651,36 @@ function ScrollSection({ children, scrollStart, scrollEnd, persist = false, styl
 function HeroLogoSection() {
   const ref = useRef();
   const cardRef = useRef();
+  const particlesRef = useRef();
   const lastOpacityRef = useRef(-1);
   const lastRotRef = useRef(0);
+  const burstDoneRef = useRef(false);
   const scroll = useScroll();
+
+  const spawnBurst = () => {
+    if (!particlesRef.current) return;
+    const container = particlesRef.current;
+    const colors = ['#00e5ff', '#aa5aff', '#ffffff', '#00e5ff', '#aa5aff'];
+    for (let i = 0; i < 24; i++) {
+      const p = document.createElement('span');
+      p.className = 'hero-particle';
+      const angle = (Math.PI * 2 * i) / 24 + (Math.random() - 0.5) * 0.4;
+      const dist = 80 + Math.random() * 100;
+      const dx = Math.cos(angle) * dist;
+      const dy = Math.sin(angle) * dist;
+      const size = 2 + Math.random() * 4;
+      const dur = 0.5 + Math.random() * 0.5;
+      p.style.cssText = `
+        width:${size}px;height:${size}px;
+        background:${colors[i % colors.length]};
+        left:50%;top:50%;
+        --dx:${dx}px;--dy:${dy}px;
+        animation: heroParticleBurst ${dur}s cubic-bezier(0.25,0.46,0.45,0.94) forwards;
+      `;
+      container.appendChild(p);
+      setTimeout(() => p.remove(), dur * 1000 + 100);
+    }
+  };
 
   useFrame(() => {
     if (!ref.current) return;
@@ -582,6 +696,13 @@ function HeroLogoSection() {
         lastRotRef.current = rot;
         cardRef.current.style.transform = `rotateY(${rot}deg)`;
       }
+      if (!burstDoneRef.current && rot >= 90) {
+        burstDoneRef.current = true;
+        spawnBurst();
+      }
+      if (rot < 5) {
+        burstDoneRef.current = false;
+      }
     }
   });
 
@@ -592,6 +713,7 @@ function HeroLogoSection() {
       style={{ opacity: 1 }}
     >
       <div className="hero-card-wrap" ref={cardRef}>
+        <div className="hero-particles-container" ref={particlesRef} />
         <div className="hero-card">
           <div className="hero-orbit-dot" style={{ '--orbit-r': '140px', '--orbit-dur': '6s', '--orbit-delay': '0s', '--dot-color': 'rgba(0, 229, 255, 0.9)' }} />
           <div className="hero-orbit-dot" style={{ '--orbit-r': '155px', '--orbit-dur': '8s', '--orbit-delay': '-2s', '--dot-color': 'rgba(170, 90, 255, 0.85)' }} />
@@ -1483,7 +1605,7 @@ const worldX = view === 'default'
     ? -25 + stairIndex * 10
     : -22 + stairIndex * 10;
   const orbitRadius = 4.2;
-  const entryStart = -0.12;
+  const entryStart = -0.12 + stairIndex * 0.012;
   const entryDur = 0.07;
   const flyIn = 6;
   const JOURNEY_CARD_SCALE = 1.1;
