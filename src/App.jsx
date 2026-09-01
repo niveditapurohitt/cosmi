@@ -705,6 +705,9 @@ function LaunchEvolutionStage({ scrollStart, scrollEnd }) {
   const copyRef = useRef();
   const captionRef = useRef();
   const typedRef = useRef(false);
+  const lastParticleFadeRef = useRef(-1);
+  const lastCopyFadeRef = useRef(-1);
+  const lastTransformRef = useRef('');
   const [showWhatsApp, setShowWhatsApp] = useState(false);
 
   useFrame(() => {
@@ -714,12 +717,20 @@ function LaunchEvolutionStage({ scrollStart, scrollEnd }) {
     const titleSlide = (1 - smoothstep(0.08, 0.42, progress)) * 44;
     const titleShift = (1 - smoothstep(0.12, 0.42, progress)) * 26;
     const particleFade = smoothstep(0.70, 0.90, offset);
-    if (particlesRef.current) {
+    if (particlesRef.current && Math.abs(particleFade - lastParticleFadeRef.current) > 0.002) {
+      lastParticleFadeRef.current = particleFade;
       particlesRef.current.style.opacity = particleFade.toFixed(3);
     }
-    if (copyRef.current) {
+    if (copyRef.current && (Math.abs(titleFade - lastCopyFadeRef.current) > 0.002)) {
+      lastCopyFadeRef.current = titleFade;
       copyRef.current.style.opacity = titleFade.toFixed(3);
-      copyRef.current.style.transform = `translate3d(${titleShift.toFixed(2)}px, ${titleSlide.toFixed(2)}px, 0)`;
+    }
+    if (copyRef.current) {
+      const transform = `translate3d(${titleShift.toFixed(2)}px, ${titleSlide.toFixed(2)}px, 0)`;
+      if (transform !== lastTransformRef.current) {
+        lastTransformRef.current = transform;
+        copyRef.current.style.transform = transform;
+      }
     }
     if (captionRef.current && !typedRef.current && progress > 0.85) {
       typedRef.current = true;
@@ -730,7 +741,7 @@ function LaunchEvolutionStage({ scrollStart, scrollEnd }) {
   return (
     <div className="launch-stage">
       <div ref={particlesRef} className="launch-particles">
-        <ParticleBg color="0, 229, 255" count={180} linkDistance={95} />
+        <ParticleBg color="0, 229, 255" count={260} linkDistance={95} />
       </div>
       <div ref={copyRef} className="launch-copy-shell">
         <div className="launch-title-stack">
@@ -3005,14 +3016,18 @@ function DNAHelix({ journey, mouseYRef }) {
       const walkBase = THREE.MathUtils.clamp((JOURNEY_CAM_X - state.camera.position.x) / 12, 0, 1);
       opacity = THREE.MathUtils.clamp(Math.max(walkBase, hoverReveal), 0, 1);
     }
-    fadeRef.current = THREE.MathUtils.lerp(fadeRef.current, opacity, 1 - Math.exp(-delta * 6));
+    const next = THREE.MathUtils.lerp(fadeRef.current, opacity, 1 - Math.exp(-delta * 6));
 
-    ref.current.traverse((o) => {
-      if (o.material) {
-        if (o.userData.baseOp === undefined) o.userData.baseOp = o.material.opacity;
-        o.material.opacity = o.userData.baseOp * fadeRef.current;
-      }
-    });
+    // Only touch the whole subgraph when the fade actually moves meaningfully
+    if (Math.abs(next - fadeRef.current) > 0.003) {
+      fadeRef.current = next;
+      ref.current.traverse((o) => {
+        if (o.material) {
+          if (o.userData.baseOp === undefined) o.userData.baseOp = o.material.opacity;
+          o.material.opacity = o.userData.baseOp * fadeRef.current;
+        }
+      });
+    }
   });
 
   return (
@@ -3157,13 +3172,13 @@ const defaultCards = [
               <HeroLogoSection />
 
               <ScrollSection
-                scrollStart={0.465}
+                scrollStart={0.55}
                 scrollEnd={0.7}
                 persist
                 style={{
                   position: 'absolute',
                   top: '0vh',
-                  left: '100vw',
+                  left: '114.5vw',
                   width: '100vw',
                   height: '100vh',
                   color: 'white',

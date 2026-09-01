@@ -168,8 +168,8 @@ export default function ParticleBg({ color = '136, 204, 255', count = 60, linkDi
 
             const lineAlpha = 0.1 + 0.08 * wConnect + (over ? 0.04 : 0);
             tickCount += 1;
-            // Rebuild the O(n^2) link path only every few frames; re-stroke the cached path otherwise
-            if (tickCount % 4 === 1 || !linkPath) {
+            // Rebuild the O(n^2) link path every other frame; re-stroke the cached path otherwise
+            if (tickCount % 2 === 1 || !linkPath) {
                 linkPath = new Path2D();
                 for (let i = 0; i < particles.length; i++) {
                     const a = particles[i];
