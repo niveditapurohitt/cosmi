@@ -5,7 +5,6 @@ import { ScrollControls, Scroll, useScroll } from '@react-three/drei';
 import * as THREE from 'three';
 import ActiveDNA from './ActiveDNA';
 import Galaxy from './Galaxy';
-import ParticleBg from './ParticleBg';
 
 function wrapText(ctx, text, maxWidth) {
   const words = String(text).split(' ');
@@ -433,7 +432,21 @@ function ScrollElBridge({ scrollElRef }) {
   return null;
 }
 
-function CameraTracker({ length, journey, mouseXRef, mouseYRef }) {
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(() => window.matchMedia('(max-width: 640px)').matches);
+
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 640px)');
+    const update = () => setIsMobile(media.matches);
+    update();
+    media.addEventListener('change', update);
+    return () => media.removeEventListener('change', update);
+  }, []);
+
+  return isMobile;
+}
+
+function CameraTracker({ length, journey, mouseXRef, mouseYRef, isMobile }) {
   const scroll = useScroll();
   const journeyScrollRef = useRef(null);
   const scrollerRef = useRef(null);
@@ -447,9 +460,14 @@ function CameraTracker({ length, journey, mouseXRef, mouseYRef }) {
     if (journey) {
       if (scrollerRef.current === null) scrollerRef.current = scroll.el || null;
       if (journeyScrollRef.current === null && scrollerRef.current) {
-        journeyScrollRef.current = scrollerRef.current.scrollLeft;
+        journeyScrollRef.current = isMobile
+          ? scrollerRef.current.scrollTop
+          : scrollerRef.current.scrollLeft;
       }
-      if (scrollerRef.current) scrollerRef.current.scrollLeft = journeyScrollRef.current || 0;
+      if (scrollerRef.current) {
+        if (isMobile) scrollerRef.current.scrollTop = journeyScrollRef.current || 0;
+        else scrollerRef.current.scrollLeft = journeyScrollRef.current || 0;
+      }
       const cam = state.camera.position;
       if (journey.card >= 2 && !journeyStartSnappedRef.current) {
         journeyStartSnappedRef.current = true;
@@ -466,11 +484,16 @@ function CameraTracker({ length, journey, mouseXRef, mouseYRef }) {
     } else {
       journeyStartSnappedRef.current = false;
       journeyScrollRef.current = null;
-      state.camera.position.x = THREE.MathUtils.lerp(state.camera.position.x, x, 0.05);
+      if (isMobile) {
+        state.camera.position.x = THREE.MathUtils.lerp(state.camera.position.x, 0, 0.12);
+        state.camera.position.y = THREE.MathUtils.lerp(state.camera.position.y, -x, 0.05);
+      } else {
+        state.camera.position.x = THREE.MathUtils.lerp(state.camera.position.x, x, 0.05);
+        state.camera.position.y = THREE.MathUtils.lerp(state.camera.position.y, 0, k);
+      }
       const zOffset = Math.sin(scroll.offset * Math.PI) * 4;
       state.camera.position.z = THREE.MathUtils.lerp(state.camera.position.z, 18 - zOffset, 0.05);
-      state.camera.position.y = THREE.MathUtils.lerp(state.camera.position.y, 0, k);
-      state.camera.lookAt(x, 0, 0);
+      state.camera.lookAt(isMobile ? 0 : x, isMobile ? -x : 0, 0);
     }
   });
   return null;
@@ -652,12 +675,22 @@ function WhatsAppForm({ onClose }) {
   );
 }
 
-function AboutUsScrollStage() {
+function AboutUsScrollStage({ isMobile = false }) {
+  const cardRef = useRef();
+  const scroll = useScroll();
   const stats = [
     { num: '150', suffix: '+', label: 'Projects Delivered' },
     { num: '98', suffix: '%', label: 'Client Retention' },
     { num: '12', suffix: '+', label: 'Countries Served' },
   ];
+
+  useFrame(() => {
+    if (!isMobile || !cardRef.current) return;
+    const progress = THREE.MathUtils.clamp((scroll.offset - 0.62) / 0.15, 0, 1);
+    const eased = smoothstep(0, 1, progress);
+    const y = (1 - eased) * 80 + 35;
+    cardRef.current.style.transform = `translate3d(0, ${y.toFixed(2)}px, 0) scale(0.9)`;
+  });
 
   return (
     <div className="about-awesome-page">
@@ -665,7 +698,7 @@ function AboutUsScrollStage() {
       <div className="about-orb about-orb-a" aria-hidden="true" />
       <div className="about-orb about-orb-b" aria-hidden="true" />
 
-      <div className="about-awesome-card">
+      <div ref={cardRef} className="about-awesome-card">
         <div className="about-awesome-border" aria-hidden="true" />
         <div className="about-mesh-bg" aria-hidden="true" />
 
@@ -740,9 +773,7 @@ function LaunchEvolutionStage({ scrollStart, scrollEnd }) {
 
   return (
     <div className="launch-stage">
-      <div ref={particlesRef} className="launch-particles">
-        <ParticleBg color="0, 229, 255" count={260} linkDistance={95} />
-      </div>
+      <div ref={particlesRef} className="launch-particles" />
       <div ref={copyRef} className="launch-copy-shell">
         <div className="launch-title-stack">
           <div className="image-block">
@@ -1752,7 +1783,7 @@ function useGlitchInfoTexture(title, subtitle, accent, items = []) {
   return tex;
 }
 
-function OrbitingCard({ title, subtitle, color, items, stairIndex, totalCards, journey, view, kind = 'default', onSelect, selectedIndex, onOptionClick, onSubClick }) {
+function OrbitingCard({ title, subtitle, color, items, stairIndex, totalCards, journey, view, kind = 'default', onSelect, selectedIndex, onOptionClick, onSubClick, isMobile }) {
   const groupRef = useRef();
   const meshRef = useRef();
   const mainFaceRef = useRef();
@@ -1787,11 +1818,14 @@ const scroll = useScroll();
 const worldX = view === 'default'
     ? -25 + stairIndex * 10
     : -22 + stairIndex * 10;
+  const worldY = view === 'default'
+    ? 25 - stairIndex * 10
+    : 22 - stairIndex * 10;
   const orbitRadius = 4.2;
   const entryStart = -0.12 + stairIndex * 0.012;
   const entryDur = 0.07;
   const flyIn = 6;
-  const JOURNEY_CARD_SCALE = 1.1;
+  const JOURNEY_CARD_SCALE = isMobile ? 0.95 : 1.1;
   const OPTION_ROW = 3.7;
   const OPTION_COL = 10.5;
   const OPTION_SIZE = [4.0, 2.9];
@@ -1894,7 +1928,7 @@ const optionTexs = useOptionTextures(items, color);
 
   const isJourneying = journey !== null;
   const isJourneyTarget = isJourneying && journey.card === stairIndex;
-  const mirrorSign = stairIndex >= 2 ? -1 : 1;
+  const mirrorSign = !isMobile && stairIndex >= 2 ? -1 : 1;
 const mainVideoActive = !isJourneying && !revealed && nearPlay;
   const subVideosActive = false;
   const optionVideosActive = isJourneyTarget && nearVideo;
@@ -1902,7 +1936,9 @@ const mainVideoActive = !isJourneying && !revealed && nearPlay;
   useFrame((state, delta) => {
     if (!groupRef.current || !meshRef.current) return;
 
-    const camDx = Math.abs(state.camera.position.x - worldX);
+    const camDx = isMobile
+      ? Math.abs(state.camera.position.y - worldY)
+      : Math.abs(state.camera.position.x - worldX);
     const nearNow = camDx < VIDEO_NEAR_RANGE || isJourneying;
     if (nearNow !== nearVideoRef.current) {
       nearVideoRef.current = nearNow;
@@ -1929,7 +1965,8 @@ if (subTextRefs.current[i]) subTextRefs.current[i].visible = false;
         posYZRef.current.y = THREE.MathUtils.lerp(posYZRef.current.y, 0, 0.055);
         posYZRef.current.z = THREE.MathUtils.lerp(posYZRef.current.z, 0, 0.055);
         const turnSign = stairIndex >= 2 ? 1 : -1;
-        rotYRef.current = THREE.MathUtils.lerp(rotYRef.current, turnSign * Math.PI / 2, 0.055);
+        const journeyRotation = isMobile ? 0 : turnSign * Math.PI / 2;
+        rotYRef.current = THREE.MathUtils.lerp(rotYRef.current, journeyRotation, 0.055);
         groupRef.current.position.set(posXRef.current, posYZRef.current.y, posYZRef.current.z);
         groupRef.current.rotation.set(0, rotYRef.current, 0);
         meshRef.current.rotation.x = THREE.MathUtils.lerp(meshRef.current.rotation.x, 0, 0.1);
@@ -2111,7 +2148,9 @@ if (subBodyRefs.current[i]) subBodyRefs.current[i].visible = false;
 
     const eased = 1 - Math.pow(1 - entryT, 3);
 
-    const camRel = state.camera.position.x - worldX;
+    const camRel = isMobile
+      ? state.camera.position.y - worldY
+      : state.camera.position.x - worldX;
     const swingTarget = THREE.MathUtils.clamp(-camRel * 0.22, -Math.PI / 2, Math.PI / 2);
     angleRef.current = THREE.MathUtils.lerp(angleRef.current, swingTarget, 1 - Math.exp(-delta * 4));
     const angle = angleRef.current;
@@ -2124,16 +2163,17 @@ if (subBodyRefs.current[i]) subBodyRefs.current[i].visible = false;
 
     posYZRef.current.y = THREE.MathUtils.lerp(posYZRef.current.y, orbitY, 0.1);
       posYZRef.current.z = THREE.MathUtils.lerp(posYZRef.current.z, orbitZ, 0.1);
-      groupRef.current.position.x = posXRef.current + (1 - eased) * flyIn;
-      groupRef.current.position.y = posYZRef.current.y;
+      groupRef.current.position.x = isMobile ? posYZRef.current.y : posXRef.current + (1 - eased) * flyIn;
+      groupRef.current.position.y = isMobile ? worldY + (1 - eased) * flyIn : posYZRef.current.y;
       groupRef.current.position.z = posYZRef.current.z;
       groupRef.current.rotation.set(0, rotYRef.current, 0);
 
-      meshRef.current.rotation.x = -angle;
+      // Mobile cards orbit around the helix without spinning on their own axis.
+      meshRef.current.rotation.set(isMobile ? 0 : -angle, 0, 0);
 
       const facing = Math.cos(angle);
       const baseScale = 0.7 + (facing * 0.5 + 0.5) * 0.5;
-      const targetScale = baseScale * (hoverRef.current ? 1.1 : 1);
+      const targetScale = baseScale * (hoverRef.current ? 1.1 : 1) * (isMobile ? 0.8 : 1);
       scaleRef.current = THREE.MathUtils.lerp(scaleRef.current, targetScale, 0.12);
       groupRef.current.scale.setScalar(Math.max(0.0001, scaleRef.current));
       if (mainFaceRef.current) mainFaceRef.current.visible = !revealedRef.current;
@@ -3000,14 +3040,19 @@ const SERVICE_ITEM_COLORS = [
   '126, 255, 90',
 ];
 
-function DNAHelix({ journey, mouseYRef }) {
+function DNAHelix({ journey, mouseYRef, isMobile, length = DNA_LENGTH, offset = DNA_OFFSET }) {
   const ref = useRef();
   const fadeRef = useRef(1);
 
   useFrame((state, delta) => {
     if (!ref.current) return;
-    const target = journey ? DNA_OFFSET + DNA_JOURNEY_SHIFT : DNA_OFFSET;
+    const target = isMobile
+        ? 0
+        : journey
+        ? offset + DNA_JOURNEY_SHIFT
+        : offset;
     ref.current.position.x = THREE.MathUtils.lerp(ref.current.position.x, target, 1 - Math.exp(-delta * 2.2));
+    ref.current.rotation.z = isMobile ? Math.PI / 2 : 0;
 
     let opacity = 1;
     if (journey) {
@@ -3031,13 +3076,18 @@ function DNAHelix({ journey, mouseYRef }) {
   });
 
   return (
-    <group ref={ref} position={[DNA_OFFSET, 0, 0]}>
-      <ActiveDNA length={DNA_LENGTH} />
+    <group
+      ref={ref}
+      position={[isMobile ? 0 : offset, isMobile ? (CAMERA_RANGE - length) / 2 : 0, 0]}
+      scale={isMobile ? 1.0 : 1}
+    >
+      <ActiveDNA length={length} />
     </group>
   );
 }
 
 export default function App() {
+  const isMobile = useIsMobile();
   const [journey, setJourney] = useState(null);
   const [selectedOption, setSelectedOption] = useState(null);
   const [activeView, setActiveView] = useState('default');
@@ -3048,7 +3098,10 @@ export default function App() {
   const scrollElRef = useRef(null);
 
   const resetScrollToStart = () => {
-    if (scrollElRef.current) scrollElRef.current.scrollLeft = 0;
+    if (scrollElRef.current) {
+      scrollElRef.current.scrollLeft = 0;
+      scrollElRef.current.scrollTop = 0;
+    }
   };
 
   useEffect(() => {
@@ -3116,6 +3169,18 @@ const defaultCards = [
       ? productCards
       : defaultCards;
 
+  const sceneDnaLength = activeView === 'services'
+    ? 90
+    : activeView === 'products'
+      ? 60
+      : DNA_LENGTH;
+  const sceneDnaOffset = activeView === 'services'
+    ? 8
+    : activeView === 'products'
+      ? -7
+      : DNA_OFFSET;
+  const scenePages = activeView === 'services' ? 3.5 : TOTAL_PAGES;
+
   const totalSceneCards = sceneCards.length;
   return (
     <>
@@ -3133,10 +3198,10 @@ const defaultCards = [
           <directionalLight position={[10, 10, 10]} intensity={0.8} />
           <directionalLight position={[-10, -5, -10]} intensity={0.3} />
 
-<ScrollControls pages={TOTAL_PAGES} horizontal damping={0.15} enabled={!journey} style={{ zIndex: 3 }}>
+<ScrollControls pages={scenePages} horizontal={!isMobile} damping={0.15} enabled={!journey} style={{ zIndex: 3 }}>
             <ScrollElBridge scrollElRef={scrollElRef} />
-            <Galaxy length={DNA_LENGTH * 1.5} />
-            <DNAHelix journey={journey} mouseYRef={mouseYRef} />
+            <Galaxy length={sceneDnaLength * 1.5} isMobile={isMobile} />
+            <DNAHelix journey={journey} mouseYRef={mouseYRef} isMobile={isMobile} length={sceneDnaLength} offset={sceneDnaOffset} />
             {sceneCards.map((card, i) => (
                 <OrbitingCard
                   key={`${activeView}-${card.kind}-${i}`}
@@ -3149,6 +3214,7 @@ const defaultCards = [
                   journey={journey}
                   view={activeView}
                   kind={card.kind}
+                  isMobile={isMobile}
                   onSelect={() => setJourney({ card: i })}
                   selectedIndex={selectedOption && selectedOption.card === i ? selectedOption.option : null}
                   onOptionClick={(opt) => { suppressDocClickRef.current = true; setSelectedOption((prev) => (prev ? null : { card: i, option: opt })); }}
@@ -3165,38 +3231,38 @@ const defaultCards = [
                   follow={!journey}
                 />
               )}
-            <CameraTracker length={CAMERA_RANGE} journey={journey} mouseXRef={mouseXRef} mouseYRef={mouseYRef} />
+            <CameraTracker length={CAMERA_RANGE} journey={journey} mouseXRef={mouseXRef} mouseYRef={mouseYRef} isMobile={isMobile} />
 
             <Scroll html style={{ width: '100vw', height: '100vh', pointerEvents: journey ? 'none' : 'auto' }}>
 
               <HeroLogoSection />
 
-              <ScrollSection
-                scrollStart={0.55}
-                scrollEnd={0.7}
+              {activeView === 'default' && <ScrollSection
+                scrollStart={isMobile ? 0.62 : 0.55}
+                scrollEnd={isMobile ? 0.77 : 0.7}
                 persist
                 style={{
                   position: 'absolute',
-                  top: '0vh',
-                  left: '114.5vw',
+                  left: isMobile ? '0' : '114.5vw',
+                  top: isMobile ? '100vh' : '0vh',
                   width: '100vw',
                   height: '100vh',
                   color: 'white',
                 }}
               >
                 <div className="about-scroll-section">
-                  <AboutUsScrollStage />
+                  <AboutUsScrollStage isMobile={isMobile} />
                 </div>
-              </ScrollSection>
+              </ScrollSection>}
 
               <ScrollSection
-                scrollStart={0.7}
+                scrollStart={activeView === 'services' ? 0.86 : (isMobile ? 0.77 : 0.7)}
                 scrollEnd={1.0}
                 persist
                 style={{
                   position: 'absolute',
-                  top: '0vh',
-                  left: '200vw',
+                  top: activeView === 'services' ? (isMobile ? '300vh' : '0vh') : (isMobile ? '200vh' : '0vh'),
+                  left: activeView === 'services' ? (isMobile ? '0' : '300vw') : (isMobile ? '0' : '200vw'),
                   width: '100vw',
                   height: '100vh',
                   textAlign: 'center',
@@ -3205,7 +3271,7 @@ const defaultCards = [
               >
                 <div className="image-section image-section-launch image-section-full">
                   <div className="image-placeholder image-placeholder-3">
-                    <LaunchEvolutionStage scrollStart={0.7} scrollEnd={1.0} />
+                    <LaunchEvolutionStage scrollStart={activeView === 'services' ? 0.86 : (isMobile ? 0.77 : 0.7)} scrollEnd={1.0} />
                   </div>
                 </div>
               </ScrollSection>

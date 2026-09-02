@@ -16,7 +16,7 @@ const circleTexture = (() => {
     return new THREE.CanvasTexture(canvas);
 })();
 
-export default function Galaxy({ length = 150 }) {
+export default function Galaxy({ length = 150, isMobile = false }) {
     const pointsRef = useRef();
     const materialRef = useRef();
     const currentOpacity = useRef(1);
@@ -47,12 +47,19 @@ export default function Galaxy({ length = 150 }) {
         if (!pointsRef.current) return;
         const g = pointsRef.current;
         g.rotation.x = state.clock.getElapsedTime() * 0.002;
-        if (scroll) g.position.x = scroll.offset * length * 0.15;
+        if (scroll) {
+            if (isMobile) {
+                // Keep the star field centered around the vertically traveling camera.
+                g.position.y = state.camera.position.y;
+            } else {
+                g.position.x = scroll.offset * length * 0.15;
+                g.position.y = 0;
+            }
+        }
 
         if (scroll && materialRef.current) {
-            const offset = scroll.offset;
-            const launchFade = offset <= 0.78 ? 1 : Math.max(0, 1 - (offset - 0.78) / 0.06);
-            currentOpacity.current = THREE.MathUtils.lerp(currentOpacity.current, launchFade, 0.08);
+            // Keep the galaxy visible behind the launch section.
+            currentOpacity.current = THREE.MathUtils.lerp(currentOpacity.current, 1, 0.08);
             materialRef.current.opacity = currentOpacity.current;
         }
     });
@@ -69,6 +76,7 @@ export default function Galaxy({ length = 150 }) {
                 ref={materialRef}
                 map={circleTexture} // Applies the round texture
                 color="#ffffff"
+                size={isMobile ? 1.35 : 1}
                 transparent
                 opacity={1}
                 alphaTest={0.01}

@@ -186,6 +186,7 @@ p {
     left: 50%;
     margin: -2px 0 0 -2px;
     pointer-events: none;
+    z-index: 2;
     animation: heroOrbit var(--orbit-dur) linear infinite;
     animation-delay: var(--orbit-delay, 0s);
 }
@@ -236,6 +237,8 @@ p {
     display: block;
     filter: drop-shadow(0 0 12px rgba(0, 229, 255, 0.2)) drop-shadow(0 0 24px rgba(170, 90, 255, 0.1));
     backface-visibility: hidden;
+    position: relative;
+    z-index: 3;
 }
 
 .hero-title {
@@ -1262,19 +1265,65 @@ text-shadow: 0 0 20px rgba(0, 229, 255, 0.32);
 }
 
 @media (max-width: 640px) {
+    .view-switcher {
+        bottom: 48px;
+        left: 16px;
+        gap: 6px;
+        padding: 10px 12px 8px;
+        border-radius: 14px;
+    }
+    .view-btn {
+        font-size: 13px;
+        letter-spacing: 0.7px;
+    }
+    .image-label {
+        font-size: 2.8rem;
+        letter-spacing: 2px;
+    }
+    .image-caption {
+        margin-top: 12px;
+        font-size: 0.7rem;
+    }
     .about-scroll-section {
-        padding: 6vh 16px 0 16px;
+        padding: 0 12px;
+        transform: none;
     }
     .about-awesome-card {
-        padding: 36px 22px 32px;
+        width: 86%;
+        max-height: 86vh;
+        padding: 30px 16px 28px;
+        transform: scale(0.9) translateZ(0);
+        transform-origin: center;
+    }
+    .about-awesome-tag {
+        gap: 5px;
+        font-size: 0.58rem;
+        letter-spacing: 2px;
+        padding: 6px 12px;
+        margin-bottom: 14px;
     }
     .about-awesome-title {
-        font-size: 1.9rem;
+        font-size: 1.55rem;
+        margin-bottom: 16px;
     }
     .about-awesome-stats {
+        margin-bottom: 16px;
         gap: 8px;
     }
+    .about-awesome-stat {
+        gap: 4px;
+        padding: 12px 5px;
+    }
     .about-awesome-num {
-        font-size: 1.6rem;
+        font-size: 1.3rem;
+    }
+    .about-awesome-num-label {
+        font-size: 0.55rem;
+        letter-spacing: 1px;
+    }
+    .about-awesome-desc {
+        font-size: 0.8rem;
+        line-height: 1.45;
+        margin-bottom: 16px;
     }
 }
