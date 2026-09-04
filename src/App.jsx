@@ -688,7 +688,9 @@ function AboutUsScrollStage({ isMobile = false }) {
     if (!isMobile || !cardRef.current) return;
     const progress = THREE.MathUtils.clamp((scroll.offset - 0.62) / 0.15, 0, 1);
     const eased = smoothstep(0, 1, progress);
-    const y = (1 - eased) * 80 + 35;
+    const cardHeight = cardRef.current.offsetHeight;
+    const startY = window.innerHeight * 0.5 + cardHeight * 0.5 + 24;
+    const y = (1 - eased) * startY;
     cardRef.current.style.transform = `translate3d(0, ${y.toFixed(2)}px, 0) scale(0.9)`;
   });
 
@@ -734,6 +736,7 @@ function AboutUsScrollStage({ isMobile = false }) {
 
 function LaunchEvolutionStage({ scrollStart, scrollEnd }) {
   const scroll = useScroll();
+  const stageRef = useRef();
   const particlesRef = useRef();
   const copyRef = useRef();
   const captionRef = useRef();
@@ -745,6 +748,12 @@ function LaunchEvolutionStage({ scrollStart, scrollEnd }) {
 
   useFrame(() => {
     const offset = scroll.offset;
+    if (stageRef.current) {
+      const entrance = smoothstep(scrollStart, Math.min(1, scrollStart + 0.05), offset);
+      stageRef.current.style.opacity = entrance.toFixed(3);
+      // Let wheel gestures reach the ScrollControls element behind the overlay.
+      stageRef.current.style.pointerEvents = 'none';
+    }
     const progress = THREE.MathUtils.clamp((offset - scrollStart) / Math.max(0.0001, scrollEnd - scrollStart), 0, 1);
     const titleFade = smoothstep(0.08, 0.42, progress);
     const titleSlide = (1 - smoothstep(0.08, 0.42, progress)) * 44;
@@ -771,8 +780,8 @@ function LaunchEvolutionStage({ scrollStart, scrollEnd }) {
     }
   });
 
-  return (
-    <div className="launch-stage">
+  return createPortal(
+    <div ref={stageRef} className="launch-stage" style={{ position: 'fixed', inset: 0, zIndex: 5 }}>
       <div ref={particlesRef} className="launch-particles" />
       <div ref={copyRef} className="launch-copy-shell">
         <div className="launch-title-stack">
@@ -816,7 +825,8 @@ function LaunchEvolutionStage({ scrollStart, scrollEnd }) {
         </div>
       </div>
       {showWhatsApp && <WhatsAppForm onClose={() => setShowWhatsApp(false)} />}
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -862,39 +872,10 @@ function ScrollSection({ children, scrollStart, scrollEnd, persist = false, styl
   );
 }
 
-function HeroLogoSection() {
+function HeroLogoSection({ onServices, onProducts, activeView }) {
   const ref = useRef();
-  const cardRef = useRef();
-  const particlesRef = useRef();
   const lastOpacityRef = useRef(-1);
-  const lastRotRef = useRef(0);
-  const burstDoneRef = useRef(false);
   const scroll = useScroll();
-
-  const spawnBurst = () => {
-    if (!particlesRef.current) return;
-    const container = particlesRef.current;
-    const colors = ['#00e5ff', '#aa5aff', '#ffffff', '#00e5ff', '#aa5aff'];
-    for (let i = 0; i < 24; i++) {
-      const p = document.createElement('span');
-      p.className = 'hero-particle';
-      const angle = (Math.PI * 2 * i) / 24 + (Math.random() - 0.5) * 0.4;
-      const dist = 80 + Math.random() * 100;
-      const dx = Math.cos(angle) * dist;
-      const dy = Math.sin(angle) * dist;
-      const size = 2 + Math.random() * 4;
-      const dur = 0.5 + Math.random() * 0.5;
-      p.style.cssText = `
-        width:${size}px;height:${size}px;
-        background:${colors[i % colors.length]};
-        left:50%;top:50%;
-        --dx:${dx}px;--dy:${dy}px;
-        animation: heroParticleBurst ${dur}s cubic-bezier(0.25,0.46,0.45,0.94) forwards;
-      `;
-      container.appendChild(p);
-      setTimeout(() => p.remove(), dur * 1000 + 100);
-    }
-  };
 
   useFrame(() => {
     if (!ref.current) return;
@@ -904,57 +885,48 @@ function HeroLogoSection() {
       lastOpacityRef.current = fade;
       ref.current.style.opacity = fade.toFixed(3);
     }
-    if (cardRef.current) {
-      const rot = smoothstep(0.0, 0.06, offset) * 180;
-      if (Math.abs(rot - lastRotRef.current) > 0.1) {
-        lastRotRef.current = rot;
-        cardRef.current.style.transform = `rotateY(${rot}deg)`;
-      }
-      if (!burstDoneRef.current && rot >= 90) {
-        burstDoneRef.current = true;
-        spawnBurst();
-      }
-      if (rot < 5) {
-        burstDoneRef.current = false;
-      }
-    }
   });
 
   return (
-    <div
-      ref={ref}
-      className="hero-logo-section"
-      style={{ opacity: 1 }}
-    >
-      <div className="hero-card-wrap" ref={cardRef}>
-        <div className="hero-particles-container" ref={particlesRef} />
-        <div className="hero-card">
-          <div className="hero-orbit-dot" style={{ '--orbit-r': '140px', '--orbit-dur': '6s', '--orbit-delay': '0s', '--dot-color': 'rgba(0, 229, 255, 0.9)' }} />
-          <div className="hero-orbit-dot" style={{ '--orbit-r': '155px', '--orbit-dur': '8s', '--orbit-delay': '-2s', '--dot-color': 'rgba(170, 90, 255, 0.85)' }} />
-          <div className="hero-orbit-dot" style={{ '--orbit-r': '130px', '--orbit-dur': '5s', '--orbit-delay': '-3.5s', '--dot-color': 'rgba(255, 255, 255, 0.7)' }} />
-          <div className="hero-orbit-dot" style={{ '--orbit-r': '165px', '--orbit-dur': '9s', '--orbit-delay': '-1s', '--dot-color': 'rgba(0, 229, 255, 0.6)' }} />
-          <div className="hero-orbit-dot" style={{ '--orbit-r': '125px', '--orbit-dur': '4.5s', '--orbit-delay': '-4s', '--dot-color': 'rgba(170, 90, 255, 0.55)' }} />
-          <div className="hero-orbit-dot" style={{ '--orbit-r': '175px', '--orbit-dur': '11s', '--orbit-delay': '-5s', '--dot-color': 'rgba(255, 255, 255, 0.45)' }} />
-          <div className="hero-orbit-dot" style={{ '--orbit-r': '115px', '--orbit-dur': '3.8s', '--orbit-delay': '-2.5s', '--dot-color': 'rgba(0, 229, 255, 0.5)' }} />
-          <img className="hero-card-img" src="/hero-logo.png" alt="Cosmichameleon" />
-        </div>
-        <div className="hero-card-back">
-          <svg className="hero-card-back-svg" viewBox="0 0 260 260" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-              <path id="curveTop" d="M 3,135 A 138,138 0 0,1 257,135" fill="none" />
-              <path id="curveBottom" d="M 3,150 A 138,138 0 0,0 257,150" fill="none" />
-            </defs>
-            <text fontFamily="'Bungee', sans-serif" fontWeight="400" fontSize="38" fill="white" letterSpacing="3">
-              <textPath href="#curveTop" startOffset="50%" textAnchor="middle">Adapt</textPath>
-            </text>
-            <text x="130" y="135" fontFamily="'Bungee', sans-serif" fontWeight="400" fontSize="34" fill="white" textAnchor="middle" letterSpacing="4">Transform</text>
-            <text fontFamily="'Bungee', sans-serif" fontWeight="400" fontSize="38" fill="white" letterSpacing="3">
-              <textPath href="#curveBottom" startOffset="50%" textAnchor="middle">Dominate</textPath>
-            </text>
-          </svg>
+    <section ref={ref} className="hero-modern" style={{ opacity: 1 }}>
+      <div className="hero-eyebrow">AI <span>•</span> SOFTWARE <span>•</span> CLOUD <span>•</span> DATA</div>
+      <div className="hero-modern-copy">
+        <h1>
+          <span className="hero-tech-line">
+            <span className="hero-tech-label">Technology that</span>
+            <video
+              className="hero-chameleon-walk"
+              src="/bluechameleon.mp4"
+              autoPlay
+              muted
+              loop
+              playsInline
+              onLoadedMetadata={(event) => { event.currentTarget.playbackRate = 0.02; }}
+              aria-hidden="true"
+            />
+          </span>
+          <span> evolves</span>
+          <br />
+          <em>with your business.</em>
+        </h1>
+        <p>Intelligent digital solutions built for what’s next.</p>
+        <div className="hero-actions">
+          <button
+            className={`hero-cta ${activeView === 'services' ? 'hero-cta-primary' : 'hero-cta-secondary'}`}
+            onClick={onServices}
+          >
+            Explore Services
+          </button>
+          <button
+            className={`hero-cta ${activeView === 'products' ? 'hero-cta-primary' : 'hero-cta-secondary'}`}
+            onClick={onProducts}
+          >
+            Our Products
+          </button>
         </div>
       </div>
-    </div>
+      <div className="hero-modern-rule" aria-hidden="true" />
+    </section>
   );
 }
 
@@ -1783,7 +1755,7 @@ function useGlitchInfoTexture(title, subtitle, accent, items = []) {
   return tex;
 }
 
-function OrbitingCard({ title, subtitle, color, items, stairIndex, totalCards, journey, view, kind = 'default', onSelect, selectedIndex, onOptionClick, onSubClick, isMobile }) {
+function OrbitingCard({ title, subtitle, color, items, stairIndex, totalCards, journey, view, kind = 'default', onSelect, onCardClick, selectedIndex, onOptionClick, onSubClick, isMobile, dnaLength = DNA_LENGTH, dnaOffset = DNA_OFFSET }) {
   const groupRef = useRef();
   const meshRef = useRef();
   const mainFaceRef = useRef();
@@ -1804,7 +1776,7 @@ const subTextRefs = useRef([]);
   const selectedRef = useRef(null);
 const scroll = useScroll();
   const hoverRef = useRef(false);
-  const angleRef = useRef(0);
+    const angleRef = useRef(0);
   const scaleRef = useRef(0.0001);
   const posXRef = useRef(0);
   const posYZRef = useRef({ y: 0, z: 0 });
@@ -1818,13 +1790,14 @@ const scroll = useScroll();
 const worldX = view === 'default'
     ? -25 + stairIndex * 10
     : -22 + stairIndex * 10;
-  const worldY = view === 'default'
-    ? 25 - stairIndex * 10
-    : 22 - stairIndex * 10;
-  const orbitRadius = 4.2;
+  const cardCenterY = isMobile ? 0 : -1;
+  const worldY = isMobile
+    ? (view === 'default' ? 25 - stairIndex * 10 : 22 - stairIndex * 10)
+    : cardCenterY;
+  const orbitRadius = 5.1;
   const entryStart = -0.12 + stairIndex * 0.012;
   const entryDur = 0.07;
-  const flyIn = 6;
+  const flyIn = isMobile ? 6 : 10;
   const JOURNEY_CARD_SCALE = isMobile ? 0.95 : 1.1;
   const OPTION_ROW = 3.7;
   const OPTION_COL = 10.5;
@@ -2109,6 +2082,7 @@ if (subTextRefs.current[i]) subTextRefs.current[i].visible = false;
 
     groupRef.current.visible = true;
     meshRef.current.visible = true;
+    // Keep the rear face anchored at the helix orbit point.
     meshRef.current.position.set(0, 0, 0);
     for (let i = 0; i < optionsRef.current.length; i++) {
       if (optionsRef.current[i]) optionsRef.current[i].visible = false;
@@ -2140,7 +2114,9 @@ if (subBodyRefs.current[i]) subBodyRefs.current[i].visible = false;
     }
 
     const offset = scroll.offset;
-    const entryT = THREE.MathUtils.clamp((offset - entryStart) / entryDur, 0, 1);
+    const entryT = isMobile
+      ? THREE.MathUtils.clamp((offset - entryStart) / entryDur, 0, 1)
+      : THREE.MathUtils.clamp((offset - entryStart) / entryDur, 0, 1);
     if (entryT <= 0) {
       groupRef.current.visible = false;
       return;
@@ -2151,25 +2127,32 @@ if (subBodyRefs.current[i]) subBodyRefs.current[i].visible = false;
     const camRel = isMobile
       ? state.camera.position.y - worldY
       : state.camera.position.x - worldX;
-    const swingTarget = THREE.MathUtils.clamp(-camRel * 0.22, -Math.PI / 2, Math.PI / 2);
-    angleRef.current = THREE.MathUtils.lerp(angleRef.current, swingTarget, 1 - Math.exp(-delta * 4));
+    const distance = Math.abs(camRel);
+    const swingTarget = camRel < 0
+      ? THREE.MathUtils.clamp(Math.pow(distance, 0.75) * 0.32, -Math.PI, Math.PI)
+      : THREE.MathUtils.clamp(-camRel * 0.28, -Math.PI, Math.PI);
+    angleRef.current = THREE.MathUtils.lerp(angleRef.current, swingTarget, 1 - Math.exp(-delta * 8));
     const angle = angleRef.current;
 
     const orbitY = Math.sin(angle) * orbitRadius;
-    const orbitZ = Math.abs(Math.cos(angle)) * orbitRadius * 0.9;
+    const orbitZ = Math.cos(angle) * orbitRadius * 0.9;
 
-    posXRef.current = THREE.MathUtils.lerp(posXRef.current, worldX, 0.1);
+    posXRef.current = worldX;
     rotYRef.current = THREE.MathUtils.lerp(rotYRef.current, 0, 0.1);
 
-    posYZRef.current.y = THREE.MathUtils.lerp(posYZRef.current.y, orbitY, 0.1);
+      posYZRef.current.y = THREE.MathUtils.lerp(posYZRef.current.y, orbitY, 0.1);
       posYZRef.current.z = THREE.MathUtils.lerp(posYZRef.current.z, orbitZ, 0.1);
-      groupRef.current.position.x = isMobile ? posYZRef.current.y : posXRef.current + (1 - eased) * flyIn;
-      groupRef.current.position.y = isMobile ? worldY + (1 - eased) * flyIn : posYZRef.current.y;
+      groupRef.current.position.x = isMobile
+        ? posYZRef.current.y
+        : posXRef.current;
+      groupRef.current.position.y = isMobile
+        ? worldY + (1 - eased) * flyIn
+        : cardCenterY + posYZRef.current.y;
       groupRef.current.position.z = posYZRef.current.z;
       groupRef.current.rotation.set(0, rotYRef.current, 0);
 
-      // Mobile cards orbit around the helix without spinning on their own axis.
-      meshRef.current.rotation.set(isMobile ? 0 : -angle, 0, 0);
+      const cardAngle = isMobile ? 0 : -angle;
+      meshRef.current.rotation.set(isMobile ? 0 : cardAngle, 0, 0);
 
       const facing = Math.cos(angle);
       const baseScale = 0.7 + (facing * 0.5 + 0.5) * 0.5;
@@ -2346,10 +2329,13 @@ mainTitleRef.current.material.opacity = THREE.MathUtils.lerp(mainTitleRef.curren
           hoverRef.current = false;
           if (!optionHoverRef.current.some(Boolean)) document.body.style.cursor = 'auto';
         }}
-onClick={(e) => {
+        onClick={(e) => {
           if (!cardsClickable) return;
           e.stopPropagation();
-          if (!isJourneying) toggleRevealed();
+          if (!isJourneying) {
+            if (onCardClick && (view === 'products' || view === 'services' || view === 'default')) onCardClick();
+            else toggleRevealed();
+          }
         }}
       >
         <boxGeometry args={[SUB_CARD_SIZE[0], SUB_CARD_SIZE[1], SUB_CARD_DEPTH]} />
@@ -2363,7 +2349,7 @@ onClick={(e) => {
           emissiveIntensity={0.07}
           depthWrite={false}
         />
-        <CardVideoPlane src={mainVideoSrc} size={SUB_CARD_SIZE} opacity={0.55} overlay={0.35} z={SUB_CARD_DEPTH / 2 + 0.02} renderOrder={10} active={mainVideoActive} startDelay={(stairIndex % 3) * 450} pull={nearVideo} />
+        <CardVideoPlane src={mainVideoSrc} size={SUB_CARD_SIZE} opacity={0.82} overlay={0.12} z={SUB_CARD_DEPTH / 2 + 0.02} renderOrder={2} active={mainVideoActive} startDelay={(stairIndex % 3) * 450} pull={nearVideo} />
         <mesh
           ref={mainFaceRef}
           position={[0, 0, SUB_CARD_DEPTH / 2 + 0.01]}
@@ -2468,7 +2454,7 @@ onClick={(e) => {
                     depthWrite={false}
                   />
                 </mesh>
-                <CardVideoPlane src={optionVideoSrcs[i]} size={OPTION_SIZE} opacity={0.55} overlay={0.35} z={OPTION_CARD_DEPTH / 2 + 0.02} renderOrder={10} active={optionVideosActive} startDelay={i * 300} />
+                <CardVideoPlane src={optionVideoSrcs[i]} size={OPTION_SIZE} opacity={0.82} overlay={0.12} z={OPTION_CARD_DEPTH / 2 + 0.02} renderOrder={2} active={optionVideosActive} startDelay={i * 300} />
                 <mesh
                   ref={(el) => { if (el) optionFaceRefs.current[i] = el; }}
                   position={[0, 0, OPTION_CARD_DEPTH / 2 + 0.01]}
@@ -2535,7 +2521,7 @@ onClick={(e) => {
                   depthWrite={false}
                 />
               </mesh>
-              <CardVideoPlane src={subVideoSrcs[i]} size={SUB_CARD_SIZE} opacity={0.55} overlay={0.35} z={SUB_CARD_DEPTH / 2 + 0.02} renderOrder={10} active={subVideosActive} startDelay={i * 300} />
+              <CardVideoPlane src={subVideoSrcs[i]} size={SUB_CARD_SIZE} opacity={0.82} overlay={0.12} z={SUB_CARD_DEPTH / 2 + 0.02} renderOrder={2} active={subVideosActive} startDelay={i * 300} />
               <mesh
                 ref={(el) => { if (el) subFaceRefs.current[i] = el; }}
                 position={[0, 0, SUB_CARD_DEPTH / 2 + 0.01]}
@@ -2682,12 +2668,33 @@ function seededShuffle(seed, arr) {
 }
 
 const VIDEO_TEX_MAX_W = 256;
+const CARD_VIDEO_ASPECT = 4 / 2.9;
 const VIDEO_TEX_PULL_EVERY_FRAMES = 4;
 
 const sharedVideoTextureCache = new Map();
 const activeVideoEntries = new Set();
 let videoPullRAF = null;
 let videoPullAccum = 0;
+
+function drawVideoCover(video, ctx, width, height) {
+  if (!video.videoWidth || !video.videoHeight) return;
+  const sourceAspect = video.videoWidth / video.videoHeight;
+  const targetAspect = width / height;
+  let sx = 0;
+  let sy = 0;
+  let sw = video.videoWidth;
+  let sh = video.videoHeight;
+
+  if (sourceAspect > targetAspect) {
+    sw = video.videoHeight * targetAspect;
+    sx = (video.videoWidth - sw) / 2;
+  } else {
+    sh = video.videoWidth / targetAspect;
+    sy = (video.videoHeight - sh) / 2;
+  }
+
+  ctx.drawImage(video, sx, sy, sw, sh, 0, 0, width, height);
+}
 
 function pullActiveVideoFrames() {
   videoPullAccum += 1;
@@ -2696,7 +2703,7 @@ function pullActiveVideoFrames() {
     for (const entry of activeVideoEntries) {
       const v = entry.video;
       if (v && v.readyState >= 2 && !v.paused && entry.pullEnabled !== false) {
-        entry.ctx.drawImage(v, 0, 0, entry.canvas.width, entry.canvas.height);
+        drawVideoCover(v, entry.ctx, entry.canvas.width, entry.canvas.height);
         entry.texture.needsUpdate = true;
       }
     }
@@ -2759,7 +2766,7 @@ function useSharedVideoTexture(src, active = true, startDelay = 0, pullEnabled =
 
       const canvas = document.createElement('canvas');
       canvas.width = VIDEO_TEX_MAX_W;
-      canvas.height = 216;
+      canvas.height = Math.round(VIDEO_TEX_MAX_W / CARD_VIDEO_ASPECT);
       const ctx = canvas.getContext('2d');
 
       const canvasTexture = new THREE.CanvasTexture(canvas);
@@ -2770,9 +2777,8 @@ function useSharedVideoTexture(src, active = true, startDelay = 0, pullEnabled =
       entry = { video, canvas, ctx, texture: canvasTexture, activeCount: 0 };
       entry.fitCanvas = () => {
         if (video.videoWidth > 0 && video.videoHeight > 0) {
-          const aspect = video.videoWidth / video.videoHeight;
           const w = VIDEO_TEX_MAX_W;
-          const h = Math.max(1, Math.round(w / aspect));
+          const h = Math.round(w / CARD_VIDEO_ASPECT);
           canvas.width = w;
           canvas.height = h;
           canvasTexture.needsUpdate = true;
@@ -2786,7 +2792,7 @@ function useSharedVideoTexture(src, active = true, startDelay = 0, pullEnabled =
     entry.activeCount += 1;
 
     const drawFrame = () => {
-      entry.ctx.drawImage(entry.video, 0, 0, entry.canvas.width, entry.canvas.height);
+      drawVideoCover(entry.video, entry.ctx, entry.canvas.width, entry.canvas.height);
       entry.texture.needsUpdate = true;
     };
     const tryPlay = () => {
@@ -2824,7 +2830,7 @@ const syncActive = () => {
     entry.video.addEventListener('ended', syncActive);
 entry.__onPlaying = () => {
         entry.fitCanvas();
-        entry.ctx.drawImage(entry.video, 0, 0, entry.canvas.width, entry.canvas.height);
+        drawVideoCover(entry.video, entry.ctx, entry.canvas.width, entry.canvas.height);
         entry.texture.needsUpdate = true;
       };
     entry.video.load();
@@ -2923,7 +2929,7 @@ function CardVideoPlane({ src, size, opacity = 0.32, z = 0.006, renderOrder = 1,
         />
       </mesh>
       {overlay > 0 && (
-        <mesh position={[0, 0, z + 0.002]} renderOrder={renderOrder + 1}>
+        <mesh position={[0, 0, z + 0.002]} renderOrder={renderOrder + 0.1}>
           <planeGeometry args={size} />
           <meshBasicMaterial
             color="#000000"
@@ -2984,26 +2990,54 @@ const sphereData = [
   {
     title: "Proprietary", subtitle: "Products", color: "255, 68, 136", stairIndex: 1,
     items: [
-      { title: "AI Agents For Workflow Automations", text: "Autonomous agents that remove busywork.", sections: [
-        { label: "Task Automation", tag: "AGENTS", text: "Self-driving pipelines that handle data entry, approvals and follow-ups.", video: "agents.mp4" },
-        { label: "Process Orchestration", tag: "ORCHESTRATION", text: "Connect your tools so work flows end-to-end without human hand-offs.", video: "orchestrate.mp4" },
-        { label: "Human In The Loop", tag: "GUARDRAILS", text: "Smart checkpoints that keep AI fast but always under your control.", video: "hiltl.mp4" },
-      ] },
-      { title: "CRM Dashboards", text: "Your entire pipeline, one clear view.", sections: [
-        { label: "Unified Pipeline", tag: "PIPELINE", text: "Deals, leads and follow-ups consolidated into a single live board.", video: "crm.mp4" },
-        { label: "Automated Insights", tag: "INSIGHTS", text: "AI-generated summaries that surface what to do next.", video: "crminsights.mp4" },
-        { label: "Team Collaboration", tag: "TEAMS", text: "Shared views and roles so everyone knows their next step.", video: "crmteam.mp4" },
-      ] },
-      { title: "Billing Software", text: "Payments, invoices and subscriptions made simple.", sections: [
-        { label: "Subscription Billing", tag: "SUBSCRIPTIONS", text: "Recurring revenue handled automatically with proration and upgrades.", video: "billing.mp4" },
-        { label: "Invoicing Suite", tag: "INVOICES", text: "Branded invoices, reminders and payment links in one flow.", video: "invoices.mp4" },
-        { label: "Revenue Analytics", tag: "ANALYTICS", text: "MRR, churn and dunning metrics at a glance.", video: "billinganalytics.mp4" },
-      ] },
-      { title: "Intelligent Chatbots", text: "AI support that answers instantly, 24/7.", sections: [
-        { label: "Instant Answers", tag: "SUPPORT", text: "Trained on your docs and FAQs to resolve tickets before they escalate.", video: "chatbot.mp4" },
-        { label: "Human Handoff", tag: "ESCALATION", text: "Seamless transfer to your team with full conversation context.", video: "handoff.mp4" },
-        { label: "Conversation Analytics", tag: "ANALYTICS", text: "Understand what customers ask and where they drop off.", video: "chatanalytics.mp4" },
-      ] },
+      {
+        title: "Website Security Scanner",
+        text: "Find security weaknesses before attackers do.",
+        overview: "An automated security assessment platform that scans websites and web applications for common security, configuration, and exposure issues and presents findings in an easy-to-understand report.",
+        features: ["Website and application discovery", "Security header checks", "SSL/TLS and certificate checks", "Common vulnerability checks", "Configuration and exposure checks", "Risk scoring and prioritized findings", "Actionable remediation guidance", "Exportable security reports"],
+        customers: "SMEs, startups, agencies, e-commerce businesses, SaaS companies, and organizations that need recurring website security checks.",
+        model: "Subscription plans, one-time security audits, agency or white-label plans, and enterprise assessments.",
+      },
+      {
+        title: "Email Automation Platform",
+        text: "Automate business communication from trigger to follow-up.",
+        overview: "A workflow automation product that sends personalized emails based on events, customer actions, lead stages, internal processes, and scheduled campaigns.",
+        features: ["Automated email sequences", "Lead nurturing", "Personalized templates", "Follow-up scheduling", "CRM integration", "Trigger-based workflows", "Analytics and delivery tracking", "Team approval workflows"],
+        customers: "Sales teams, recruiters, agencies, e-commerce companies, SaaS businesses, and service providers.",
+        model: "Monthly subscription based on contacts, emails, workflows, or seats; optional setup and integration services.",
+      },
+      {
+        title: "AI Voice Agent - Inbound & Outbound",
+        text: "AI voice agents that answer, call, qualify, and take action.",
+        overview: "A conversational voice platform for inbound and outbound business calls. Agents understand natural speech, follow business rules, collect information, qualify leads, book appointments, and hand off to humans when required.",
+        features: ["Inbound call handling", "Outbound calling campaigns", "Lead qualification", "Appointment scheduling", "FAQ and customer support", "CRM integration", "Call summaries and transcripts", "Human handoff and escalation", "Multiple agent workflows"],
+        customers: "Sales teams, customer support departments, clinics, real estate firms, recruiters, service businesses, and call-center operations.",
+        model: "Usage-based pricing per minute or call, monthly platform plans, setup fees, and enterprise contracts.",
+      },
+      {
+        title: "BrainShadow",
+        text: "An intelligent digital memory and work companion.",
+        overview: "A personal or business AI knowledge system designed to capture information, organize context, retrieve relevant knowledge, and assist users with decisions and everyday work.",
+        features: ["Personal knowledge capture", "Semantic search", "AI memory and context", "Document and note ingestion", "Conversation history", "Task and reminder support", "Context-aware recommendations", "Private knowledge spaces", "RAG-powered answers"],
+        customers: "Professionals, founders, teams, researchers, students, consultants, and knowledge-heavy businesses.",
+        model: "Freemium subscription, individual Pro plans, team plans, and private enterprise deployments.",
+      },
+      {
+        title: "AI Resume Analyzer",
+        text: "Turn resumes into actionable hiring intelligence.",
+        overview: "An AI recruitment product that analyzes resumes against job requirements, extracts candidate information, identifies relevant skills and experience, and helps recruiters shortlist candidates faster.",
+        features: ["Resume parsing", "Job-description matching", "Skill extraction", "Experience analysis", "Candidate scoring", "Shortlisting support", "Missing-skill identification", "Recruiter summaries", "Bulk resume processing"],
+        customers: "Recruitment agencies, HR teams, startups, staffing firms, colleges, and companies hiring at scale.",
+        model: "Per-resume credits, recruiter subscriptions, team plans, API access, and enterprise hiring solutions.",
+      },
+      {
+        title: "AI Customer Support Chatbot",
+        text: "24/7 AI support trained around your business.",
+        overview: "An AI customer-support assistant that answers customer questions using approved business knowledge, helps users complete common tasks, and escalates complex conversations to human support.",
+        features: ["Website chat widget", "Knowledge-base and RAG integration", "FAQ automation", "Order and account assistance", "Multilingual support", "Human handoff", "Conversation history", "Support analytics", "CRM and helpdesk integration"],
+        customers: "E-commerce brands, SaaS companies, service businesses, education companies, marketplaces, and customer-support teams.",
+        model: "Monthly subscription by conversations or agents, setup or integration fees, and enterprise plans.",
+      },
     ],
   },
 {
@@ -3038,6 +3072,92 @@ const SERVICE_ITEM_COLORS = [
   '72, 231, 182',
   '255, 106, 214',
   '126, 255, 90',
+];
+
+const serviceCatalog = [
+  {
+    title: 'AI & Intelligent Systems',
+    text: 'AI-powered products and automation for modern businesses.',
+    overview: 'Design and delivery of intelligent systems that automate work, augment teams, and create new digital capabilities.',
+    features: ['AI Agent Development', 'AI Automation', 'Generative AI Solutions', 'RAG & Knowledge Systems', 'AI Chatbots', 'AI Voice Agents', 'AI Copilots', 'Multi-Agent Systems', 'MCP & AI Tool Integration'],
+    customers: 'Modern businesses building AI-powered products, workflows, and customer experiences.',
+    model: 'Services 01-09',
+  },
+  {
+    title: 'Software & Product Development',
+    text: 'Build scalable digital products from idea to launch.',
+    overview: 'End-to-end product engineering for scalable digital products, from early validation through launch and ongoing growth.',
+    features: ['AI SaaS Development', 'Custom Software Development', 'SaaS Product Development', 'Web Application Development', 'E-Commerce Development', 'Mobile App Development', 'MVP Development', 'Startup Product Development', 'API Development', 'API & System Integration', 'Legacy Software Modernization'],
+    customers: 'Startups, growing companies, and established teams launching or modernizing digital products.',
+    model: 'Services 10-20',
+  },
+  {
+    title: 'Design & Digital Experience',
+    text: 'Create intuitive, consistent, user-focused digital experiences.',
+    overview: 'Experience design that turns complex products into clear, consistent, and enjoyable journeys for users.',
+    features: ['UI/UX Design', 'Product Design', 'Design Systems'],
+    customers: 'Organizations creating new products or improving the usability and consistency of existing experiences.',
+    model: 'Services 21-23',
+  },
+  {
+    title: 'Cloud & Engineering',
+    text: 'Reliable infrastructure and modern software delivery.',
+    overview: 'Cloud architecture and engineering practices that improve reliability, delivery speed, and operational scale.',
+    features: ['Cloud Architecture', 'Cloud Migration', 'AI Infrastructure', 'DevOps & CI/CD', 'Docker & Kubernetes', 'MLOps & LLMOps'],
+    customers: 'Teams scaling infrastructure, modernizing delivery, or operating AI workloads in production.',
+    model: 'Services 24-29',
+  },
+  {
+    title: 'Data & AI Analytics',
+    text: 'Turn data into intelligent systems and business insights.',
+    overview: 'Data foundations and intelligent analytics that make business information useful, searchable, and actionable.',
+    features: ['Data Engineering', 'Data Pipelines & ETL', 'Data Warehousing', 'Business Intelligence', 'AI Analytics & Forecasting', 'AI Document Processing', 'Computer Vision', 'Multimodal AI', 'AI Search & Semantic Search', 'AI Content Systems'],
+    customers: 'Businesses turning operational data into reporting, predictions, automation, and better decisions.',
+    model: 'Services 30-39',
+  },
+  {
+    title: 'Security & Technology Consulting',
+    text: 'Secure systems and practical technology strategy.',
+    overview: 'Security-minded technology guidance that reduces risk and connects technical decisions to business priorities.',
+    features: ['AI Cybersecurity', 'Application Security', 'Technology Consulting', 'AI Strategy & Roadmaps', 'Digital Transformation'],
+    customers: 'Organizations assessing risk, planning transformation, or aligning technology with business goals.',
+    model: 'Services 40-44',
+  },
+  {
+    title: 'Growth & Technology Talent',
+    text: 'Grow your business and extend your technology team.',
+    overview: 'Growth systems and flexible technology talent that help teams acquire customers and extend delivery capacity.',
+    features: ['CRM Implementation', 'CRM & Sales Automation', 'B2B Lead Generation', 'Digital Marketing & Growth', 'AI Talent & IT Staffing', 'Dedicated Development Teams'],
+    customers: 'Businesses expanding revenue operations, hiring technical capability, or adding dedicated delivery teams.',
+    model: 'Services 45-50',
+  },
+];
+
+const defaultCardDetails = [
+  {
+    title: 'Portfolios',
+    text: 'Selected work and digital experiences built to make ideas tangible.',
+    overview: 'A curated view of the products, platforms, and campaigns created by CosmiChameleon for ambitious brands.',
+    features: ['Brand experiences', 'Web and product launches', 'Interactive digital systems', 'Conversion-focused campaigns'],
+    customers: 'Brands looking for a thoughtful digital partner from concept through launch.',
+    model: 'Selected work and case-study showcase',
+  },
+  {
+    title: 'Why CosmiChameleon',
+    text: 'A strategic, creative, and technical partner for meaningful growth.',
+    overview: 'We combine strategy, design, engineering, and growth thinking to build work that is useful, memorable, and built for change.',
+    features: ['Strategies built for you', 'Data-driven decisions', 'Creative innovation', 'Reliability', 'Speed to market', 'End-to-end ownership'],
+    customers: 'Ambitious teams that want one accountable partner across strategy, build, launch, and growth.',
+    model: 'Long-term strategic partnership',
+  },
+  {
+    title: 'Marketing',
+    text: 'Insights and growth ideas for a fast-changing digital landscape.',
+    overview: 'Practical perspectives on AI, advertising, creative performance, and the digital behaviors shaping modern growth.',
+    features: ['The rise of AI in ads', 'Viral scaling strategy', 'Short-form video mastery', 'Data-driven storytelling', 'Platform algorithm evolution', 'Performance creative'],
+    customers: 'Marketing teams and founders looking for sharper ideas and stronger campaign performance.',
+    model: 'Insights, strategy, and growth consulting',
+  },
 ];
 
 function DNAHelix({ journey, mouseYRef, isMobile, length = DNA_LENGTH, offset = DNA_OFFSET }) {
@@ -3081,8 +3201,62 @@ function DNAHelix({ journey, mouseYRef, isMobile, length = DNA_LENGTH, offset = 
       position={[isMobile ? 0 : offset, isMobile ? (CAMERA_RANGE - length) / 2 : 0, 0]}
       scale={isMobile ? 1.0 : 1}
     >
-      <ActiveDNA length={length} />
+      <ActiveDNA key={length} length={length} />
     </group>
+  );
+}
+
+function ProductDetailOverlay({ product, service, defaultCard, color, onClose }) {
+  const [isClosing, setIsClosing] = useState(false);
+
+  useEffect(() => {
+    setIsClosing(false);
+  }, [product, service, defaultCard]);
+
+  const detail = product || service || defaultCard;
+  if (!detail) return null;
+
+  const requestClose = () => {
+    if (isClosing) return;
+    setIsClosing(true);
+    window.setTimeout(onClose, 520);
+  };
+
+  return createPortal(
+    <div className={`product-detail-overlay ${isClosing ? 'is-closing' : ''}`} onPointerDown={requestClose}>
+      <article
+        className="product-detail-panel"
+        style={{ '--product-accent': `rgb(${color})` }}
+        onPointerDown={(e) => e.stopPropagation()}
+      >
+        <button className="product-detail-close" onClick={requestClose} aria-label="Close product details">&times;</button>
+        <div className="product-detail-kicker">{product ? 'Proprietary product' : service ? 'CosmiChameleon service' : 'CosmiChameleon'}</div>
+        <h2>{detail.title}</h2>
+        <p className="product-detail-lede">{detail.text}</p>
+
+        <div className="product-detail-scroll">
+          <section>
+            <h3>{product ? 'Product Overview' : service ? 'Service Overview' : 'Overview'}</h3>
+            <p>{detail.overview}</p>
+          </section>
+          <section>
+            <h3>Core Features</h3>
+            <ul>
+              {detail.features.map((feature) => <li key={feature}>{feature}</li>)}
+            </ul>
+          </section>
+          <section>
+            <h3>Target Customers</h3>
+            <p>{detail.customers}</p>
+          </section>
+          <section>
+            <h3>Recommended Business Model</h3>
+            <p>{detail.model}</p>
+          </section>
+        </div>
+      </article>
+    </div>,
+    document.body
   );
 }
 
@@ -3090,6 +3264,9 @@ export default function App() {
   const isMobile = useIsMobile();
   const [journey, setJourney] = useState(null);
   const [selectedOption, setSelectedOption] = useState(null);
+  const [expandedProduct, setExpandedProduct] = useState(null);
+  const [expandedService, setExpandedService] = useState(null);
+  const [expandedDefault, setExpandedDefault] = useState(null);
   const [activeView, setActiveView] = useState('default');
   const [showAbout, setShowAbout] = useState(false);
   const mouseXRef = useRef(0);
@@ -3139,24 +3316,26 @@ export default function App() {
   }, []);
 
 const defaultCards = [
-    { title: 'Portfolios', subtitle: '', color: '56, 189, 248', kind: 'default', items: [] },
-    { title: sphereData[2].title, subtitle: sphereData[2].subtitle, color: sphereData[2].color, kind: 'default', items: [] },
-    { title: sphereData[3].title, subtitle: sphereData[3].subtitle, color: sphereData[3].color, kind: 'default', items: [] },
+    { title: 'Portfolios', subtitle: '', color: '56, 189, 248', kind: 'default', items: [], defaultCard: defaultCardDetails[0] },
+    { title: sphereData[2].title, subtitle: sphereData[2].subtitle, color: sphereData[2].color, kind: 'default', items: [], defaultCard: defaultCardDetails[1] },
+    { title: sphereData[3].title, subtitle: sphereData[3].subtitle, color: sphereData[3].color, kind: 'default', items: [], defaultCard: defaultCardDetails[2] },
   ].map((card, i) => ({ ...card, stairIndex: i }));
 
   const productCardColors = ['0, 229, 255', '255, 92, 138', '124, 92, 255', '255, 184, 77'];
   const productCards = sphereData[1].items.map((item, i) => ({
     title: item.title,
     subtitle: 'Products',
+    product: item,
     color: productCardColors[i % productCardColors.length],
     kind: 'product',
     items: [],
     stairIndex: i,
   }));
 
-  const serviceCards = sphereData[0].items.map((item, i) => ({
+  const serviceCards = serviceCatalog.map((item, i) => ({
     title: item.title,
     subtitle: sphereData[0].subtitle,
+    service: item,
     color: SERVICE_ITEM_COLORS[i % SERVICE_ITEM_COLORS.length],
     kind: 'service',
     items: [],
@@ -3175,13 +3354,25 @@ const defaultCards = [
       ? 60
       : DNA_LENGTH;
   const sceneDnaOffset = activeView === 'services'
-    ? 8
+    ? DNA_OFFSET + 20
     : activeView === 'products'
-      ? -7
+      ? DNA_OFFSET + 5
       : DNA_OFFSET;
   const scenePages = activeView === 'services' ? 3.5 : TOTAL_PAGES;
+  const launchStart = activeView === 'services' ? 0.94 : (isMobile ? 0.77 : 0.7);
+  const launchTop = activeView === 'services' ? (isMobile ? '300vh' : '0vh') : (isMobile ? '200vh' : '0vh');
+  const launchLeft = activeView === 'services' ? (isMobile ? '0' : '300vw') : (isMobile ? '0' : '200vw');
 
   const totalSceneCards = sceneCards.length;
+  const changeView = (nextView) => {
+    setSelectedOption(null);
+    setExpandedProduct(null);
+    setExpandedService(null);
+    setExpandedDefault(null);
+    setJourney(null);
+    resetScrollToStart();
+    setActiveView(nextView);
+  };
   return (
     <>
     <div className="app-shell">
@@ -3215,7 +3406,16 @@ const defaultCards = [
                   view={activeView}
                   kind={card.kind}
                   isMobile={isMobile}
+                  dnaLength={sceneDnaLength}
+                  dnaOffset={sceneDnaOffset}
                   onSelect={() => setJourney({ card: i })}
+                  onCardClick={card.product
+                    ? () => setExpandedProduct(card.product)
+                    : card.service
+                      ? () => setExpandedService(card.service)
+                      : card.defaultCard
+                        ? () => setExpandedDefault(card.defaultCard)
+                        : undefined}
                   selectedIndex={selectedOption && selectedOption.card === i ? selectedOption.option : null}
                   onOptionClick={(opt) => { suppressDocClickRef.current = true; setSelectedOption((prev) => (prev ? null : { card: i, option: opt })); }}
                   onSubClick={(opt) => { suppressDocClickRef.current = true; setSelectedOption((prev) => (prev ? null : { card: 0, option: opt })); }}
@@ -3235,12 +3435,15 @@ const defaultCards = [
 
             <Scroll html style={{ width: '100vw', height: '100vh', pointerEvents: journey ? 'none' : 'auto' }}>
 
-              <HeroLogoSection />
+              <HeroLogoSection
+                onServices={() => changeView('services')}
+                onProducts={() => changeView('products')}
+                activeView={activeView}
+              />
 
               {activeView === 'default' && <ScrollSection
                 scrollStart={isMobile ? 0.62 : 0.55}
-                scrollEnd={isMobile ? 0.77 : 0.7}
-                persist
+                scrollEnd={isMobile ? 0.74 : 0.7}
                 style={{
                   position: 'absolute',
                   left: isMobile ? '0' : '114.5vw',
@@ -3256,13 +3459,13 @@ const defaultCards = [
               </ScrollSection>}
 
               <ScrollSection
-                scrollStart={activeView === 'services' ? 0.86 : (isMobile ? 0.77 : 0.7)}
+                scrollStart={launchStart}
                 scrollEnd={1.0}
                 persist
                 style={{
                   position: 'absolute',
-                  top: activeView === 'services' ? (isMobile ? '300vh' : '0vh') : (isMobile ? '200vh' : '0vh'),
-                  left: activeView === 'services' ? (isMobile ? '0' : '300vw') : (isMobile ? '0' : '200vw'),
+                  top: launchTop,
+                  left: launchLeft,
                   width: '100vw',
                   height: '100vh',
                   textAlign: 'center',
@@ -3271,7 +3474,7 @@ const defaultCards = [
               >
                 <div className="image-section image-section-launch image-section-full">
                   <div className="image-placeholder image-placeholder-3">
-                    <LaunchEvolutionStage scrollStart={activeView === 'services' ? 0.86 : (isMobile ? 0.77 : 0.7)} scrollEnd={1.0} />
+                    <LaunchEvolutionStage scrollStart={launchStart} scrollEnd={1.0} />
                   </div>
                 </div>
               </ScrollSection>
@@ -3284,27 +3487,20 @@ const defaultCards = [
       {journey && (
         <button className="journey-back" onClick={() => { setSelectedOption(null); setJourney(null); }}>Back</button>
       )}
-      <div className="view-switcher">
-<button
-          className={`view-btn ${activeView === 'default' ? 'active' : ''}`}
-          onClick={() => { setSelectedOption(null); setJourney(null); resetScrollToStart(); setActiveView('default'); }}
-        >
-          CosmiChameleon
-        </button>
-        <button
-          className={`view-btn ${activeView === 'services' ? 'active' : ''}`}
-          onClick={() => { setSelectedOption(null); setJourney(null); resetScrollToStart(); setActiveView('services'); }}
-        >
-          Our Services
-        </button>
-        <button
-          className={`view-btn ${activeView === 'products' ? 'active' : ''}`}
-          onClick={() => { setSelectedOption(null); setJourney(null); resetScrollToStart(); setActiveView('products'); }}
-        >
-          Our Products
-        </button>
-      </div>
     </div>
+    <ProductDetailOverlay
+      product={expandedProduct}
+      service={expandedService}
+      defaultCard={expandedDefault}
+      color={expandedProduct
+        ? productCardColors[sphereData[1].items.indexOf(expandedProduct) % productCardColors.length]
+        : expandedService
+          ? SERVICE_ITEM_COLORS[serviceCatalog.indexOf(expandedService) % SERVICE_ITEM_COLORS.length]
+          : expandedDefault
+            ? defaultCards[defaultCardDetails.indexOf(expandedDefault)]?.color || '0, 229, 255'
+            : '0, 229, 255'}
+      onClose={() => { setExpandedProduct(null); setExpandedService(null); setExpandedDefault(null); }}
+    />
     {showAbout && <AboutUsOverlay onClose={() => setShowAbout(false)} />}
     </>
   );

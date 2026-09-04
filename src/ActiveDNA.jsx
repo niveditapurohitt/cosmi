@@ -78,8 +78,8 @@ export default function ActiveDNA({ length = 100, breaks = [] }) {
         }
         return arr;
     }, [strand2Particles]);
-    const s1Lines = useMemo(() => new Float32Array(maxLinesPerStrand * 6), []);
-    const s2Lines = useMemo(() => new Float32Array(maxLinesPerStrand * 6), []);
+    const s1Lines = useMemo(() => new Float32Array(maxLinesPerStrand * 6), [maxLinesPerStrand]);
+    const s2Lines = useMemo(() => new Float32Array(maxLinesPerStrand * 6), [maxLinesPerStrand]);
 
     const geoS1Points = useMemo(() => {
         const g = new THREE.BufferGeometry();
