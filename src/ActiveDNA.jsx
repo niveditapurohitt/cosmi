@@ -200,20 +200,20 @@ export default function ActiveDNA({ length = 100, breaks = [] }) {
     return (
         <group ref={groupRef}>
             <points geometry={geoS1Points} frustumCulled={false}>
-                <pointsMaterial map={circleTexture} size={0.1} color="#ffffff" transparent opacity={0.9} alphaTest={0.01} blending={THREE.AdditiveBlending} depthWrite={false} />
+                <pointsMaterial map={circleTexture} size={0.04} color="#ffffff" transparent opacity={0.9} alphaTest={0.01} blending={THREE.AdditiveBlending} depthWrite={false} />
             </points>
             <points geometry={geoS1Points} frustumCulled={false}>
-                <pointsMaterial map={circleTexture} size={0.5} color="#4488ff" transparent opacity={0.28} alphaTest={0.01} blending={THREE.AdditiveBlending} depthWrite={false} />
+                <pointsMaterial map={circleTexture} size={0.08} color="#4488ff" transparent opacity={0.28} alphaTest={0.01} blending={THREE.AdditiveBlending} depthWrite={false} />
             </points>
             <lineSegments geometry={geoS1Lines} frustumCulled={false}>
                 <lineBasicMaterial color="#4488ff" transparent opacity={0.4} blending={THREE.AdditiveBlending} depthWrite={false} />
             </lineSegments>
 
             <points geometry={geoS2Points} frustumCulled={false}>
-                <pointsMaterial map={circleTexture} size={0.1} color="#ffffff" transparent opacity={0.9} alphaTest={0.01} blending={THREE.AdditiveBlending} depthWrite={false} />
+                <pointsMaterial map={circleTexture} size={0.04} color="#ffffff" transparent opacity={0.9} alphaTest={0.01} blending={THREE.AdditiveBlending} depthWrite={false} />
             </points>
             <points geometry={geoS2Points} frustumCulled={false}>
-                <pointsMaterial map={circleTexture} size={0.5} color="#ff4488" transparent opacity={0.28} alphaTest={0.01} blending={THREE.AdditiveBlending} depthWrite={false} />
+                <pointsMaterial map={circleTexture} size={0.08} color="#ff4488" transparent opacity={0.28} alphaTest={0.01} blending={THREE.AdditiveBlending} depthWrite={false} />
             </points>
             <lineSegments geometry={geoS2Lines} frustumCulled={false}>
                 <lineBasicMaterial color="#ff4488" transparent opacity={0.4} blending={THREE.AdditiveBlending} depthWrite={false} />

@@ -36,7 +36,7 @@ export default function ScreenParticles({
     scrollStart = 0.08,
     scrollEnd = 0.24,
     persist = false,
-    particleSize = 0.12,
+    particleSize = 0.05,
     lineOpacity = 0.5,
 }) {
     const groupRef = useRef();

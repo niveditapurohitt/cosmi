@@ -94,7 +94,7 @@ export default function ParticleBg({ color = '136, 204, 255', count = 60, linkDi
                     ty: y0,
                     vx: (Math.random() - 0.5) * 0.4,
                     vy: (Math.random() - 0.5) * 0.4,
-                    r: 1 + Math.random() * 2,
+                    r: 0.15 + Math.random() * 0.2,
                     layer,
                     hot: false,
                 });

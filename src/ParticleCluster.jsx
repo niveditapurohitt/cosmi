@@ -25,7 +25,7 @@ export default function ParticleCluster({
     threshold = 2.0,
     maxLines = 8000,
     color = '#88ccff',
-    particleSize = 0.06,
+    particleSize = 0.035,
     lineOpacity = 0.25,
     particleOpacity = 0.7,
 }) {

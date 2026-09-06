@@ -112,7 +112,7 @@ function makeCardTexture(title, subtitle, accent, items = null) {
   ctx.fillStyle = `rgba(${accent}, 0.6)`;
   for (let i = 0; i < net.length; i++) {
     ctx.beginPath();
-    ctx.arc(net[i].x, net[i].y, 2.2, 0, Math.PI * 2);
+    ctx.arc(net[i].x, net[i].y, 0.9, 0, Math.PI * 2);
     ctx.fill();
   }
   ctx.restore();
@@ -448,12 +448,14 @@ function useIsMobile() {
 
 function CameraTracker({ length, journey, mouseXRef, mouseYRef, isMobile }) {
   const scroll = useScroll();
+  const mobileRange = length * 0.68;
   const journeyScrollRef = useRef(null);
   const scrollerRef = useRef(null);
   const journeyStartSnappedRef = useRef(false);
 
     useFrame((state, delta) => {
-      const x = scroll.offset * length - (length / 2);
+      const cameraLength = isMobile ? mobileRange : length;
+      const x = scroll.offset * cameraLength - (cameraLength / 2);
       const k = 1 - Math.exp(-delta * 5);
       const py = mouseYRef.current;
       const px = mouseXRef.current;
@@ -686,7 +688,7 @@ function AboutUsScrollStage({ isMobile = false }) {
 
   useFrame(() => {
     if (!isMobile || !cardRef.current) return;
-    const progress = THREE.MathUtils.clamp((scroll.offset - 0.62) / 0.15, 0, 1);
+    const progress = THREE.MathUtils.clamp((scroll.offset - 0.48) / 0.22, 0, 1);
     const eased = smoothstep(0, 1, progress);
     const cardHeight = cardRef.current.offsetHeight;
     const startY = window.innerHeight * 0.5 + cardHeight * 0.5 + 24;
@@ -749,16 +751,16 @@ function LaunchEvolutionStage({ scrollStart, scrollEnd }) {
   useFrame(() => {
     const offset = scroll.offset;
     if (stageRef.current) {
-      const entrance = smoothstep(scrollStart, Math.min(1, scrollStart + 0.05), offset);
+      const entrance = smoothstep(scrollStart, Math.min(1, scrollStart + 0.08), offset);
       stageRef.current.style.opacity = entrance.toFixed(3);
       // Let wheel gestures reach the ScrollControls element behind the overlay.
       stageRef.current.style.pointerEvents = 'none';
     }
     const progress = THREE.MathUtils.clamp((offset - scrollStart) / Math.max(0.0001, scrollEnd - scrollStart), 0, 1);
-    const titleFade = smoothstep(0.08, 0.42, progress);
-    const titleSlide = (1 - smoothstep(0.08, 0.42, progress)) * 44;
-    const titleShift = (1 - smoothstep(0.12, 0.42, progress)) * 26;
-    const particleFade = smoothstep(0.70, 0.90, offset);
+    const titleFade = smoothstep(0.08, 0.68, progress);
+    const titleSlide = (1 - smoothstep(0.08, 0.68, progress)) * 44;
+    const titleShift = (1 - smoothstep(0.12, 0.68, progress)) * 26;
+    const particleFade = smoothstep(0.42, 0.82, progress);
     if (particlesRef.current && Math.abs(particleFade - lastParticleFadeRef.current) > 0.002) {
       lastParticleFadeRef.current = particleFade;
       particlesRef.current.style.opacity = particleFade.toFixed(3);
@@ -774,7 +776,7 @@ function LaunchEvolutionStage({ scrollStart, scrollEnd }) {
         copyRef.current.style.transform = transform;
       }
     }
-    if (captionRef.current && !typedRef.current && progress > 0.85) {
+    if (captionRef.current && !typedRef.current && progress > 0.92) {
       typedRef.current = true;
       captionRef.current.classList.add('typing-active');
     }
@@ -872,7 +874,7 @@ function ScrollSection({ children, scrollStart, scrollEnd, persist = false, styl
   );
 }
 
-function HeroLogoSection({ onServices, onProducts, activeView }) {
+function HeroLogoSection({ onServices, onProducts, onDefault, activeView }) {
   const ref = useRef();
   const lastOpacityRef = useRef(-1);
   const scroll = useScroll();
@@ -891,12 +893,20 @@ function HeroLogoSection({ onServices, onProducts, activeView }) {
     <section ref={ref} className="hero-modern" style={{ opacity: 1 }}>
       <div className="hero-eyebrow">AI <span>•</span> SOFTWARE <span>•</span> CLOUD <span>•</span> DATA</div>
       <div className="hero-modern-copy">
+        <button className="hero-branding" onClick={onDefault} aria-label="Go to default page">
+          <img
+            className="hero-brand-logo"
+            src="/logoo-2.png"
+            alt="CosmiChameleon"
+          />
+          <span className="hero-brand-name">COSMICHAMELEON</span>
+        </button>
         <h1>
           <span className="hero-tech-line">
             <span className="hero-tech-label">Technology that</span>
             <video
               className="hero-chameleon-walk"
-              src="/bluechameleon.mp4"
+              //src="/bluechameleon.mp4"
               autoPlay
               muted
               loop
@@ -1276,7 +1286,7 @@ function makeSectionsTexture(item, category, accent) {
   ctx.fillStyle = `rgba(${accent}, 0.5)`;
   for (const p of pts) {
     ctx.beginPath();
-    ctx.arc(p.x, p.y, 2.2, 0, Math.PI * 2);
+    ctx.arc(p.x, p.y, 0.9, 0, Math.PI * 2);
     ctx.fill();
   }
   ctx.restore();
@@ -1456,7 +1466,7 @@ function makeDetailTexture(item, category, accent) {
   ctx.fillStyle = `rgba(${accent}, 0.5)`;
   for (const p of pts) {
     ctx.beginPath();
-    ctx.arc(p.x, p.y, 2.2, 0, Math.PI * 2);
+    ctx.arc(p.x, p.y, 0.9, 0, Math.PI * 2);
     ctx.fill();
   }
   ctx.restore();
@@ -1596,7 +1606,7 @@ function makeGlitchInfoTexture(title, subtitle, accent, items = []) {
   ctx.fillStyle = `rgba(${accent}, 0.5)`;
   for (const p of pts) {
     ctx.beginPath();
-    ctx.arc(p.x, p.y, 2.2, 0, Math.PI * 2);
+    ctx.arc(p.x, p.y, 0.9, 0, Math.PI * 2);
     ctx.fill();
   }
   ctx.restore();
@@ -1791,14 +1801,15 @@ const worldX = view === 'default'
     ? -25 + stairIndex * 10
     : -22 + stairIndex * 10;
   const cardCenterY = isMobile ? 0 : -1;
+  const mobileCardStep = 5.5;
   const worldY = isMobile
-    ? (view === 'default' ? 25 - stairIndex * 10 : 22 - stairIndex * 10)
+    ? (view === 'default' ? 25 - stairIndex * mobileCardStep : 22 - stairIndex * mobileCardStep)
     : cardCenterY;
   const orbitRadius = 5.1;
   const entryStart = -0.12 + stairIndex * 0.012;
   const entryDur = 0.07;
   const flyIn = isMobile ? 6 : 10;
-  const JOURNEY_CARD_SCALE = isMobile ? 0.95 : 1.1;
+  const JOURNEY_CARD_SCALE = isMobile ? 0.8 : 1.1;
   const OPTION_ROW = 3.7;
   const OPTION_COL = 10.5;
   const OPTION_SIZE = [4.0, 2.9];
@@ -2156,7 +2167,7 @@ if (subBodyRefs.current[i]) subBodyRefs.current[i].visible = false;
 
       const facing = Math.cos(angle);
       const baseScale = 0.7 + (facing * 0.5 + 0.5) * 0.5;
-      const targetScale = baseScale * (hoverRef.current ? 1.1 : 1) * (isMobile ? 0.8 : 1);
+      const targetScale = baseScale * (hoverRef.current ? 1.1 : 1) * (isMobile ? 0.66 : 1);
       scaleRef.current = THREE.MathUtils.lerp(scaleRef.current, targetScale, 0.12);
       groupRef.current.scale.setScalar(Math.max(0.0001, scaleRef.current));
       if (mainFaceRef.current) mainFaceRef.current.visible = !revealedRef.current;
@@ -3163,6 +3174,7 @@ const defaultCardDetails = [
 function DNAHelix({ journey, mouseYRef, isMobile, length = DNA_LENGTH, offset = DNA_OFFSET }) {
   const ref = useRef();
   const fadeRef = useRef(1);
+  const mobileCameraRange = CAMERA_RANGE * 0.68;
 
   useFrame((state, delta) => {
     if (!ref.current) return;
@@ -3198,11 +3210,70 @@ function DNAHelix({ journey, mouseYRef, isMobile, length = DNA_LENGTH, offset = 
   return (
     <group
       ref={ref}
-      position={[isMobile ? 0 : offset, isMobile ? (CAMERA_RANGE - length) / 2 : 0, 0]}
-      scale={isMobile ? 1.0 : 1}
+      position={[isMobile ? 0 : offset, isMobile ? (mobileCameraRange - length) / 2 : 0, 0]}
+      scale={isMobile ? 0.78 : 1}
     >
       <ActiveDNA key={length} length={length} />
     </group>
+  );
+}
+
+function scatterValue(index, salt, amount) {
+  const random = Math.abs(Math.sin((index + 1) * salt) * 43758.5453) % 1;
+  return (random - 0.5) * amount;
+}
+
+function GlitchText({ children }) {
+  const lettersRef = useRef([]);
+
+  const resetLetters = () => {
+    lettersRef.current.forEach((letter) => {
+      if (!letter) return;
+      letter.style.transform = '';
+      letter.style.opacity = '';
+      letter.style.filter = '';
+    });
+  };
+
+  const distortLetters = (event) => {
+    const radius = 150;
+    lettersRef.current.forEach((letter) => {
+      if (!letter) return;
+      const rect = letter.getBoundingClientRect();
+      const dx = event.clientX - (rect.left + rect.width / 2);
+      const dy = event.clientY - (rect.top + rect.height / 2);
+      const distance = Math.hypot(dx, dy);
+      const strength = Math.max(0, 1 - distance / radius);
+      const x = Number(letter.dataset.scatterX) * strength;
+      const y = Number(letter.dataset.scatterY) * strength;
+      const rotate = Number(letter.dataset.scatterR) * strength;
+      letter.style.transform = `translate3d(${x}px, ${y}px, 0) rotate(${rotate}deg) scale(${1 - strength * 0.45})`;
+      letter.style.opacity = String(1 - strength * 0.72);
+      letter.style.filter = `blur(${(strength * 3.8).toFixed(2)}px)`;
+    });
+  };
+
+  return (
+    <span className="glitch-text" onPointerMove={distortLetters} onPointerLeave={resetLetters}>
+      {[...String(children)].map((character, index) => (
+        <span
+          key={`${character}-${index}`}
+          className="glitch-letter"
+          ref={(letter) => { lettersRef.current[index] = letter; }}
+          style={{
+            '--letter-index': index,
+            '--scatter-x': `${scatterValue(index, 12.9898, 70)}`,
+            '--scatter-y': `${scatterValue(index, 78.233, 55)}`,
+            '--scatter-r': `${scatterValue(index, 39.417, 45)}`,
+          }}
+          data-scatter-x={scatterValue(index, 12.9898, 70)}
+          data-scatter-y={scatterValue(index, 78.233, 55)}
+          data-scatter-r={scatterValue(index, 39.417, 45)}
+        >
+          {character === ' ' ? '\u00a0' : character}
+        </span>
+      ))}
+    </span>
   );
 }
 
@@ -3230,28 +3301,28 @@ function ProductDetailOverlay({ product, service, defaultCard, color, onClose })
         onPointerDown={(e) => e.stopPropagation()}
       >
         <button className="product-detail-close" onClick={requestClose} aria-label="Close product details">&times;</button>
-        <div className="product-detail-kicker">{product ? 'Proprietary product' : service ? 'CosmiChameleon service' : 'CosmiChameleon'}</div>
-        <h2>{detail.title}</h2>
-        <p className="product-detail-lede">{detail.text}</p>
+        <div className="product-detail-kicker"><GlitchText>{product ? 'Proprietary product' : service ? 'CosmiChameleon service' : 'CosmiChameleon'}</GlitchText></div>
+        <h2><GlitchText>{detail.title}</GlitchText></h2>
+        <p className="product-detail-lede"><GlitchText>{detail.text}</GlitchText></p>
 
         <div className="product-detail-scroll">
           <section>
-            <h3>{product ? 'Product Overview' : service ? 'Service Overview' : 'Overview'}</h3>
-            <p>{detail.overview}</p>
+            <h3><GlitchText>{product ? 'Product Overview' : service ? 'Service Overview' : 'Overview'}</GlitchText></h3>
+            <p><GlitchText>{detail.overview}</GlitchText></p>
           </section>
           <section>
             <h3>Core Features</h3>
             <ul>
-              {detail.features.map((feature) => <li key={feature}>{feature}</li>)}
+              {detail.features.map((feature) => <li key={feature}><GlitchText>{feature}</GlitchText></li>)}
             </ul>
           </section>
           <section>
             <h3>Target Customers</h3>
-            <p>{detail.customers}</p>
+            <p><GlitchText>{detail.customers}</GlitchText></p>
           </section>
           <section>
             <h3>Recommended Business Model</h3>
-            <p>{detail.model}</p>
+            <p><GlitchText>{detail.model}</GlitchText></p>
           </section>
         </div>
       </article>
@@ -3351,15 +3422,21 @@ const defaultCards = [
   const sceneDnaLength = activeView === 'services'
     ? 90
     : activeView === 'products'
-      ? 60
-      : DNA_LENGTH;
+      ? 90
+      : (isMobile ? 35 : DNA_LENGTH);
   const sceneDnaOffset = activeView === 'services'
     ? DNA_OFFSET + 20
     : activeView === 'products'
-      ? DNA_OFFSET + 5
+      ? DNA_OFFSET + 20
       : DNA_OFFSET;
-  const scenePages = activeView === 'services' ? 3.5 : TOTAL_PAGES;
-  const launchStart = activeView === 'services' ? 0.94 : (isMobile ? 0.77 : 0.7);
+  const scenePages = isMobile
+    ? (activeView === 'services' ? 4.5 : 4.2)
+    : (activeView === 'services' ? 3.5 : TOTAL_PAGES);
+  const launchStart = activeView === 'services'
+    ? (isMobile ? 0.9 : 0.94)
+    : activeView === 'products'
+      ? (isMobile ? 0.78 : 0.82)
+      : (isMobile ? 0.7 : 0.7);
   const launchTop = activeView === 'services' ? (isMobile ? '300vh' : '0vh') : (isMobile ? '200vh' : '0vh');
   const launchLeft = activeView === 'services' ? (isMobile ? '0' : '300vw') : (isMobile ? '0' : '200vw');
 
@@ -3438,12 +3515,13 @@ const defaultCards = [
               <HeroLogoSection
                 onServices={() => changeView('services')}
                 onProducts={() => changeView('products')}
+                onDefault={() => changeView('default')}
                 activeView={activeView}
               />
 
               {activeView === 'default' && <ScrollSection
-                scrollStart={isMobile ? 0.62 : 0.55}
-                scrollEnd={isMobile ? 0.74 : 0.7}
+                scrollStart={isMobile ? 0.48 : 0.5}
+                scrollEnd={isMobile ? 0.76 : 0.76}
                 style={{
                   position: 'absolute',
                   left: isMobile ? '0' : '114.5vw',

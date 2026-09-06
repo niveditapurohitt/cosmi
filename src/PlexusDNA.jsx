@@ -98,7 +98,7 @@ export default function PlexusDNA({ length = 80 }) {
 
             {/* --- DNA BACKBONE PLEXUS --- */}
             <points geometry={backboneGeo}>
-                <pointsMaterial size={0.15} color="#ffffff" transparent opacity={0.8} />
+                <pointsMaterial size={0.05} color="#ffffff" transparent opacity={0.8} />
             </points>
             <lineSegments geometry={backboneLinesGeo}>
                 <lineBasicMaterial color="#ffffff" transparent opacity={0.15} />
@@ -106,7 +106,7 @@ export default function PlexusDNA({ length = 80 }) {
 
             {/* --- AMBIENT FLOATING PARTICLES --- */}
             <points geometry={ambientGeo}>
-                <pointsMaterial size={0.1} color="#00ffff" transparent opacity={0.4} />
+                <pointsMaterial size={0.035} color="#00ffff" transparent opacity={0.4} />
             </points>
             <lineSegments geometry={ambientLinesGeo}>
                 <lineBasicMaterial color="#ffffff" transparent opacity={0.05} />
