@@ -2959,7 +2959,7 @@ function CardVideoPlane({ src, size, opacity = 0.32, z = 0.006, renderOrder = 1,
 
 const sphereData = [
   {
-    title: "Our Expertise", subtitle: "Innovation", color: "56, 189, 248", stairIndex: 0,
+    title: "Our Expertise", subtitle: "", color: "56, 189, 248", stairIndex: 0,
     items: [
       { title: "Website Development", text: "Modern, blazing-fast sites built to convert.", sections: [
         { label: "Static Websites", tag: "STATIC", text: "Fast, brochure-style pages that present your brand with clean, dependable structure.", video: "static.mp4" },
