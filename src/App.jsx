@@ -798,7 +798,7 @@ function LaunchEvolutionStage({ scrollStart, scrollEnd }) {
           </div>
           <p ref={captionRef} className="image-caption typing-caption">The future starts here</p>
           <div className="social-links">
-            <a href="https://instagram.com/yourhandle" target="_blank" rel="noopener noreferrer" className="social-link" title="Instagram">
+            <a href="https://www.instagram.com/cosmichameleon.io?stkn=MW5wa3MzaXM5enEwNQ==" target="_blank" rel="noopener noreferrer" className="social-link" title="Instagram">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="social-icon">
                 <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
                 <circle cx="12" cy="12" r="5" />
@@ -811,7 +811,7 @@ function LaunchEvolutionStage({ scrollStart, scrollEnd }) {
                 <polyline points="22,4 12,13 2,4" />
               </svg>
             </a>
-            <a href="https://linkedin.com/in/yourprofile" target="_blank" rel="noopener noreferrer" className="social-link" title="LinkedIn">
+            <a href="https://www.linkedin.com/company/cosmichameleon/" target="_blank" rel="noopener noreferrer" className="social-link" title="LinkedIn">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="social-icon">
                 <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-4 0v7h-4v-7a6 6 0 0 1 6-6z" />
                 <rect x="2" y="9" width="4" height="12" />
@@ -3003,6 +3003,7 @@ const sphereData = [
     items: [
       {
         title: "Website Security Scanner",
+        url: "https://shieldscope.netlify.app/",
         text: "Find security weaknesses before attackers do.",
         overview: "An automated security assessment platform that scans websites and web applications for common security, configuration, and exposure issues and presents findings in an easy-to-understand report.",
         features: ["Website and application discovery", "Security header checks", "SSL/TLS and certificate checks", "Common vulnerability checks", "Configuration and exposure checks", "Risk scoring and prioritized findings", "Actionable remediation guidance", "Exportable security reports"],
@@ -3011,6 +3012,7 @@ const sphereData = [
       },
       {
         title: "Email Automation Platform",
+        url: "https://mailx-mu.vercel.app/",
         text: "Automate business communication from trigger to follow-up.",
         overview: "A workflow automation product that sends personalized emails based on events, customer actions, lead stages, internal processes, and scheduled campaigns.",
         features: ["Automated email sequences", "Lead nurturing", "Personalized templates", "Follow-up scheduling", "CRM integration", "Trigger-based workflows", "Analytics and delivery tracking", "Team approval workflows"],
@@ -3019,6 +3021,7 @@ const sphereData = [
       },
       {
         title: "AI Voice Agent - Inbound & Outbound",
+        url: "https://voice-agent-lac-ten.vercel.app/login",
         text: "AI voice agents that answer, call, qualify, and take action.",
         overview: "A conversational voice platform for inbound and outbound business calls. Agents understand natural speech, follow business rules, collect information, qualify leads, book appointments, and hand off to humans when required.",
         features: ["Inbound call handling", "Outbound calling campaigns", "Lead qualification", "Appointment scheduling", "FAQ and customer support", "CRM integration", "Call summaries and transcripts", "Human handoff and escalation", "Multiple agent workflows"],
@@ -3027,6 +3030,7 @@ const sphereData = [
       },
       {
         title: "BrainShadow",
+        url: "https://shadow-brain-4lux.vercel.app/",
         text: "An intelligent digital memory and work companion.",
         overview: "A personal or business AI knowledge system designed to capture information, organize context, retrieve relevant knowledge, and assist users with decisions and everyday work.",
         features: ["Personal knowledge capture", "Semantic search", "AI memory and context", "Document and note ingestion", "Conversation history", "Task and reminder support", "Context-aware recommendations", "Private knowledge spaces", "RAG-powered answers"],
@@ -3148,8 +3152,14 @@ const defaultCardDetails = [
   {
     title: 'Portfolios',
     text: 'Selected work and digital experiences built to make ideas tangible.',
-    overview: 'A curated view of the products, platforms, and campaigns created by CosmiChameleon for ambitious brands.',
-    features: ['Brand experiences', 'Web and product launches', 'Interactive digital systems', 'Conversion-focused campaigns'],
+    overview: 'A curated collection of digital products built across security, automation, AI voice, and personal knowledge management.',
+    projects: [
+      { title: 'Website Security Scanner', description: 'Scan websites for security risks and actionable findings.', url: 'https://shieldscope.netlify.app/' },
+      { title: 'Email Automation Platform', description: 'Automate personalized email workflows and follow-ups.', url: 'https://mailx-mu.vercel.app/' },
+      { title: 'AI Voice Agent', description: 'Handle inbound and outbound calls with an AI voice assistant.', url: 'https://voice-agent-lac-ten.vercel.app/login' },
+      { title: 'Shadow Brain', description: 'Organize knowledge, context, and everyday work with AI.', url: 'https://shadow-brain-4lux.vercel.app/' },
+    ],
+    features: ['Security scanning', 'Email workflow automation', 'AI voice agents', 'AI knowledge management'],
     customers: 'Brands looking for a thoughtful digital partner from concept through launch.',
     model: 'Selected work and case-study showcase',
   },
@@ -3310,6 +3320,25 @@ function ProductDetailOverlay({ product, service, defaultCard, color, onClose })
             <h3><GlitchText>{product ? 'Product Overview' : service ? 'Service Overview' : 'Overview'}</GlitchText></h3>
             <p><GlitchText>{detail.overview}</GlitchText></p>
           </section>
+          {detail.projects?.length > 0 && (
+            <section>
+              <h3>Project Links</h3>
+              <div className="portfolio-project-links">
+                {detail.projects.map((project) => (
+                  <a
+                    key={project.title}
+                    className="portfolio-project-link"
+                    href={project.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <strong>{project.title}</strong>
+                    <span>{project.description}</span>
+                  </a>
+                ))}
+              </div>
+            </section>
+          )}
           <section>
             <h3>Core Features</h3>
             <ul>
@@ -3395,7 +3424,7 @@ const defaultCards = [
   const productCardColors = ['0, 229, 255', '255, 92, 138', '124, 92, 255', '255, 184, 77'];
   const productCards = sphereData[1].items.map((item, i) => ({
     title: item.title,
-    subtitle: 'Products',
+    subtitle: '',
     product: item,
     color: productCardColors[i % productCardColors.length],
     kind: 'product',
@@ -3487,7 +3516,13 @@ const defaultCards = [
                   dnaOffset={sceneDnaOffset}
                   onSelect={() => setJourney({ card: i })}
                   onCardClick={card.product
-                    ? () => setExpandedProduct(card.product)
+                    ? () => {
+                        if (card.product.url) {
+                          window.open(card.product.url, '_blank', 'noopener,noreferrer');
+                        } else {
+                          setExpandedProduct(card.product);
+                        }
+                      }
                     : card.service
                       ? () => setExpandedService(card.service)
                       : card.defaultCard
