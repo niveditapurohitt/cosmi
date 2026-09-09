@@ -2621,7 +2621,7 @@ function DetailPanel({ item, category, color, follow = false }) {
 }
 
 const TOTAL_PAGES = 3;
-const DNA_LENGTH = 50;
+const DNA_LENGTH = 65;
 const CAMERA_RANGE = 100;
 const DNA_OFFSET = -25;
 const DNA_JOURNEY_SHIFT = 20;
@@ -3150,18 +3150,28 @@ const serviceCatalog = [
 
 const defaultCardDetails = [
   {
-    title: 'Portfolios',
-    text: 'Selected work and digital experiences built to make ideas tangible.',
-    overview: 'A curated collection of digital products built across security, automation, AI voice, and personal knowledge management.',
-    projects: [
-      { title: 'Website Security Scanner', description: 'Scan websites for security risks and actionable findings.', url: 'https://shieldscope.netlify.app/' },
-      { title: 'Email Automation Platform', description: 'Automate personalized email workflows and follow-ups.', url: 'https://mailx-mu.vercel.app/' },
-      { title: 'AI Voice Agent', description: 'Handle inbound and outbound calls with an AI voice assistant.', url: 'https://voice-agent-lac-ten.vercel.app/login' },
-      { title: 'Shadow Brain', description: 'Organize knowledge, context, and everyday work with AI.', url: 'https://shadow-brain-4lux.vercel.app/' },
+    title: 'Careers',
+    text: 'Build meaningful technology with a curious, ambitious team.',
+    overview: 'Join a collaborative team working across AI, software, design, cloud, data, and growth to create digital products with real impact.',
+    jobs: [
+      { title: 'AI Training Account Provider', description: 'Remote opportunity supporting AI-related training activities.', url: 'https://www.linkedin.com/company/job-jockey-official/posts/?feedView=all' },
+      { title: 'Business Development and Bidding Intern', description: 'Remote role focused on discovering project opportunities and acquiring clients.', url: 'https://www.linkedin.com/company/job-jockey-official/posts/?feedView=all' },
+      { title: 'AI Agent Developer Intern', description: 'Remote internship building real-world AI agents with modern development workflows.', url: 'https://www.linkedin.com/company/job-jockey-official/posts/?feedView=all' },
+      { title: 'AI UI/UX Designer Intern', description: 'Remote internship designing AI-powered products and user experiences.', url: 'https://www.linkedin.com/company/job-jockey-official/posts/?feedView=all' },
+      { title: 'Operations Intern', description: 'Remote internship supporting day-to-day operations and coordination.', url: 'https://www.linkedin.com/company/job-jockey-official/posts/?feedView=all' },
+      { title: 'Computer Teacher', description: 'Teaching opportunity in Udaipur focused on computer and technology education.', url: 'https://www.linkedin.com/company/job-jockey-official/posts/?feedView=all' },
     ],
-    features: ['Security scanning', 'Email workflow automation', 'AI voice agents', 'AI knowledge management'],
-    customers: 'Brands looking for a thoughtful digital partner from concept through launch.',
-    model: 'Selected work and case-study showcase',
+    features: ['Collaborative remote culture', 'AI and modern engineering', 'Creative problem solving', 'Learning and mentorship'],
+    customers: 'Designers, developers, strategists, growth specialists, and technology enthusiasts.',
+    model: 'Project-based and long-term opportunities',
+  },
+  {
+    title: 'Case Study',
+    text: 'See how strategy, design, and technology become useful products.',
+    overview: 'Explore selected product stories, from the original challenge and solution through the technology choices and outcomes that shaped each build.',
+    features: ['Challenge and context', 'Strategy and approach', 'Product design and engineering', 'Results and learnings'],
+    customers: 'Teams evaluating a digital partner for their next product, platform, or transformation.',
+    model: 'Discovery, delivery, and measurable growth',
   },
   {
     title: 'Why CosmiChameleon',
@@ -3339,6 +3349,25 @@ function ProductDetailOverlay({ product, service, defaultCard, color, onClose })
               </div>
             </section>
           )}
+          {detail.jobs?.length > 0 && (
+            <section>
+              <h3>Open Positions</h3>
+              <div className="career-job-links">
+                {detail.jobs.map((job) => (
+                  <a
+                    key={job.title}
+                    className="career-job-link"
+                    href={job.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <strong>{job.title}</strong>
+                    <span>{job.description}</span>
+                  </a>
+                ))}
+              </div>
+            </section>
+          )}
           <section>
             <h3>Core Features</h3>
             <ul>
@@ -3353,6 +3382,16 @@ function ProductDetailOverlay({ product, service, defaultCard, color, onClose })
             <h3>Recommended Business Model</h3>
             <p><GlitchText>{detail.model}</GlitchText></p>
           </section>
+          {product?.url && (
+            <a
+              className="product-explore-link"
+              href={product.url}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Explore More
+            </a>
+          )}
         </div>
       </article>
     </div>,
@@ -3416,9 +3455,10 @@ export default function App() {
   }, []);
 
 const defaultCards = [
-    { title: 'Portfolios', subtitle: '', color: '56, 189, 248', kind: 'default', items: [], defaultCard: defaultCardDetails[0] },
-    { title: sphereData[2].title, subtitle: sphereData[2].subtitle, color: sphereData[2].color, kind: 'default', items: [], defaultCard: defaultCardDetails[1] },
-    { title: sphereData[3].title, subtitle: sphereData[3].subtitle, color: sphereData[3].color, kind: 'default', items: [], defaultCard: defaultCardDetails[2] },
+    { title: 'Careers', subtitle: '', color: '56, 189, 248', kind: 'default', items: [], defaultCard: defaultCardDetails[0] },
+    { title: 'Case Study', subtitle: '', color: '255, 92, 138', kind: 'default', items: [], defaultCard: defaultCardDetails[1] },
+    { title: sphereData[2].title, subtitle: sphereData[2].subtitle, color: sphereData[2].color, kind: 'default', items: [], defaultCard: defaultCardDetails[2] },
+    { title: sphereData[3].title, subtitle: sphereData[3].subtitle, color: sphereData[3].color, kind: 'default', items: [], defaultCard: defaultCardDetails[3] },
   ].map((card, i) => ({ ...card, stairIndex: i }));
 
   const productCardColors = ['0, 229, 255', '255, 92, 138', '124, 92, 255', '255, 184, 77'];
@@ -3452,7 +3492,7 @@ const defaultCards = [
     ? 90
     : activeView === 'products'
       ? 90
-      : (isMobile ? 35 : DNA_LENGTH);
+      : (isMobile ? 48 : DNA_LENGTH);
   const sceneDnaOffset = activeView === 'services'
     ? DNA_OFFSET + 20
     : activeView === 'products'
@@ -3465,7 +3505,7 @@ const defaultCards = [
     ? (isMobile ? 0.9 : 0.94)
     : activeView === 'products'
       ? (isMobile ? 0.78 : 0.82)
-      : (isMobile ? 0.7 : 0.7);
+      : (isMobile ? 0.76 : 0.78);
   const launchTop = activeView === 'services' ? (isMobile ? '300vh' : '0vh') : (isMobile ? '200vh' : '0vh');
   const launchLeft = activeView === 'services' ? (isMobile ? '0' : '300vw') : (isMobile ? '0' : '200vw');
 
@@ -3516,13 +3556,7 @@ const defaultCards = [
                   dnaOffset={sceneDnaOffset}
                   onSelect={() => setJourney({ card: i })}
                   onCardClick={card.product
-                    ? () => {
-                        if (card.product.url) {
-                          window.open(card.product.url, '_blank', 'noopener,noreferrer');
-                        } else {
-                          setExpandedProduct(card.product);
-                        }
-                      }
+                    ? () => setExpandedProduct(card.product)
                     : card.service
                       ? () => setExpandedService(card.service)
                       : card.defaultCard
@@ -3555,11 +3589,11 @@ const defaultCards = [
               />
 
               {activeView === 'default' && <ScrollSection
-                scrollStart={isMobile ? 0.48 : 0.5}
-                scrollEnd={isMobile ? 0.76 : 0.76}
+                scrollStart={isMobile ? 0.68 : 0.7}
+                scrollEnd={0.9}
                 style={{
                   position: 'absolute',
-                  left: isMobile ? '0' : '114.5vw',
+                  left: isMobile ? '0' : '140vw',
                   top: isMobile ? '100vh' : '0vh',
                   width: '100vw',
                   height: '100vh',
