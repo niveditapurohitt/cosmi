@@ -20,7 +20,8 @@ export default function Galaxy({ length = 150, isMobile = false }) {
     const pointsRef = useRef();
     const materialRef = useRef();
     const scroll = useScroll();
-    const starCount = 1500;
+    const starCount = 2400;
+    const hoverFrame = useRef(0);
     const pointerWorld = useMemo(() => new THREE.Vector3(), []);
     const rayDirection = useMemo(() => new THREE.Vector3(), []);
 
@@ -65,9 +66,10 @@ export default function Galaxy({ length = 150, isMobile = false }) {
         }
 
         const camera = state.camera;
+        hoverFrame.current += 1;
         pointerWorld.set(state.pointer.x, state.pointer.y, 0).unproject(camera);
         rayDirection.copy(pointerWorld).sub(camera.position).normalize();
-        if (Math.abs(rayDirection.z) > 0.0001) {
+        if (hoverFrame.current % 2 === 0 && Math.abs(rayDirection.z) > 0.0001) {
             const hoverRadius = 3.6;
             const time = state.clock.getElapsedTime();
 
@@ -79,8 +81,8 @@ export default function Galaxy({ length = 150, isMobile = false }) {
                 const cursorY = camera.position.y + rayDirection.y * (depth / rayDirection.z);
                 const dx = basePositions[index] + g.position.x - cursorX;
                 const dy = basePositions[index + 1] + g.position.y - cursorY;
-                const distance = Math.hypot(dx, dy);
-                if (distance > hoverRadius) {
+                const distanceSq = dx * dx + dy * dy;
+                if (distanceSq > hoverRadius * hoverRadius) {
                     positions[index] = basePositions[index];
                     positions[index + 1] = basePositions[index + 1];
                     colors[index] = 1;
@@ -88,6 +90,7 @@ export default function Galaxy({ length = 150, isMobile = false }) {
                     colors[index + 2] = 1;
                     continue;
                 }
+                const distance = Math.sqrt(distanceSq);
                 const influence = Math.max(0, 1 - distance / hoverRadius);
                 const falloff = influence * influence;
                 const brightness = 1 + falloff * 1.5;

@@ -451,7 +451,7 @@ function CameraTracker({ length, journey, mouseXRef, mouseYRef, isMobile }) {
   const mobileRange = length * 0.68;
   const journeyScrollRef = useRef(null);
   const scrollerRef = useRef(null);
-  const journeyStartSnappedRef = useRef(false);
+  const journeyMotionRef = useRef(null);
 
     useFrame((state, delta) => {
       const cameraLength = isMobile ? mobileRange : length;
@@ -470,21 +470,22 @@ function CameraTracker({ length, journey, mouseXRef, mouseYRef, isMobile }) {
         if (isMobile) scrollerRef.current.scrollTop = journeyScrollRef.current || 0;
         else scrollerRef.current.scrollLeft = journeyScrollRef.current || 0;
       }
-      const cam = state.camera.position;
-      if (journey.card >= 2 && !journeyStartSnappedRef.current) {
-        journeyStartSnappedRef.current = true;
-        cam.set(JOURNEY_LEFT_START, 0, 0);
+      if (!journeyMotionRef.current) {
+        journeyMotionRef.current = {
+          startZ: state.camera.position.z,
+          targetZ: -18,
+          elapsed: 0,
+        };
       }
-      if (cam.x < JOURNEY_CAM_ARRIVE) {
-        cam.x = Math.min(cam.x + JOURNEY_WALK_SPEED * delta, JOURNEY_CAM_X);
-      } else {
-        cam.x = THREE.MathUtils.lerp(cam.x, JOURNEY_CAM_X, 1 - Math.exp(-delta * 2.2));
-      }
-      cam.z = THREE.MathUtils.lerp(cam.z, 0, 1 - Math.exp(-delta * 6));
-      cam.y = THREE.MathUtils.lerp(cam.y, -py * 1.2, 1 - Math.exp(-delta * 3.5));
-      state.camera.lookAt(JOURNEY_END_X + px * 0.6, JOURNEY_CAM_LOOK_Y - py * 1.0, 0);
+      const motion = journeyMotionRef.current;
+      motion.elapsed = Math.min(motion.elapsed + delta, 1.65);
+      const progress = motion.elapsed / 1.65;
+      const eased = 1 - Math.pow(1 - progress, 3);
+      state.camera.position.z = THREE.MathUtils.lerp(motion.startZ, motion.targetZ, eased);
+      // Preserve the current framing while the user moves straight through.
+      state.camera.lookAt(state.camera.position.x, isMobile ? state.camera.position.y : 0, -100);
     } else {
-      journeyStartSnappedRef.current = false;
+      journeyMotionRef.current = null;
       journeyScrollRef.current = null;
       if (isMobile) {
         state.camera.position.x = THREE.MathUtils.lerp(state.camera.position.x, 0, 0.12);
@@ -1791,6 +1792,7 @@ const scroll = useScroll();
   const posXRef = useRef(0);
   const posYZRef = useRef({ y: 0, z: 0 });
   const rotYRef = useRef(0);
+  const journeyStartZRef = useRef(null);
   const nearVideoRef = useRef(true);
   const [nearVideo, setNearVideo] = React.useState(true);
   const nearPlayRef = useRef(true);
@@ -1944,21 +1946,31 @@ if (subTextRefs.current[i]) subTextRefs.current[i].visible = false;
       }
       if (isJourneyTarget) {
         groupRef.current.visible = true;
-        meshRef.current.visible = false;
-        posXRef.current = THREE.MathUtils.lerp(posXRef.current, JOURNEY_END_X, 0.055);
-        posYZRef.current.y = THREE.MathUtils.lerp(posYZRef.current.y, 0, 0.055);
-        posYZRef.current.z = THREE.MathUtils.lerp(posYZRef.current.z, 0, 0.055);
-        const turnSign = stairIndex >= 2 ? 1 : -1;
-        const journeyRotation = isMobile ? 0 : turnSign * Math.PI / 2;
-        rotYRef.current = THREE.MathUtils.lerp(rotYRef.current, journeyRotation, 0.055);
-        groupRef.current.position.set(posXRef.current, posYZRef.current.y, posYZRef.current.z);
+        if (journeyStartZRef.current === null) journeyStartZRef.current = posYZRef.current.z;
+        posYZRef.current.z = THREE.MathUtils.lerp(posYZRef.current.z, -4.5, 0.055);
+        const journeyDistance = Math.max(0.01, journeyStartZRef.current + 4.5);
+        const journeyProgress = THREE.MathUtils.clamp(
+          (journeyStartZRef.current - posYZRef.current.z) / journeyDistance,
+          0,
+          1,
+        );
+        const farSideReveal = THREE.MathUtils.smoothstep(journeyProgress, 0.72, 0.9);
+        meshRef.current.visible = kind === 'default' && farSideReveal > 0.01;
+        rotYRef.current = THREE.MathUtils.lerp(rotYRef.current, 0, 0.055);
+        groupRef.current.position.set(
+          isMobile ? posYZRef.current.y : posXRef.current,
+          isMobile ? worldY : cardCenterY + posYZRef.current.y,
+          posYZRef.current.z,
+        );
         groupRef.current.rotation.set(0, rotYRef.current, 0);
         meshRef.current.rotation.x = THREE.MathUtils.lerp(meshRef.current.rotation.x, 0, 0.1);
         scaleRef.current = THREE.MathUtils.lerp(scaleRef.current, JOURNEY_CARD_SCALE, 0.06);
         groupRef.current.scale.setScalar(Math.max(0.0001, scaleRef.current));
-        meshRef.current.material.opacity = THREE.MathUtils.lerp(meshRef.current.material.opacity, 1, 0.08);
+        meshRef.current.material.opacity = THREE.MathUtils.lerp(meshRef.current.material.opacity, farSideReveal, 0.08);
 
-        const optIn = THREE.MathUtils.clamp((state.camera.position.x - 18) / 8, 0, 1);
+        const optIn = isJourneyTarget
+          ? farSideReveal
+          : THREE.MathUtils.clamp((state.camera.position.x - 18) / 8, 0, 1);
         const sel = selectedRef.current;
         if (sel !== null) {
           const cam = state.camera;
@@ -2091,6 +2103,7 @@ if (subTextRefs.current[i]) subTextRefs.current[i].visible = false;
       return;
     }
 
+    journeyStartZRef.current = null;
     groupRef.current.visible = true;
     meshRef.current.visible = true;
     // Keep the rear face anchored at the helix orbit point.
@@ -2632,6 +2645,16 @@ const JOURNEY_CAM_LOOK_Y = 0.7;
 const JOURNEY_WALK_SPEED = 26;
 const JOURNEY_CAM_ARRIVE = 42;
 const JOURNEY_LEFT_START = -60;
+
+function getJourneyTarget(view, stairIndex, isMobile) {
+  const worldX = view === 'default'
+    ? -25 + stairIndex * 10
+    : -22 + stairIndex * 10;
+  const worldY = isMobile
+    ? (view === 'default' ? 25 - stairIndex * 5.5 : 22 - stairIndex * 5.5)
+    : 0;
+  return isMobile ? -worldY : -worldX;
+}
 
 const THUMB_NDC_X = -0.75;
 const THUMB_NDC_Y = 0.87;
@@ -3201,17 +3224,14 @@ function DNAHelix({ journey, mouseYRef, isMobile, length = DNA_LENGTH, offset = 
     const target = isMobile
         ? 0
         : journey
-        ? offset + DNA_JOURNEY_SHIFT
+        ? offset
         : offset;
     ref.current.position.x = THREE.MathUtils.lerp(ref.current.position.x, target, 1 - Math.exp(-delta * 2.2));
     ref.current.rotation.z = isMobile ? Math.PI / 2 : 0;
 
     let opacity = 1;
     if (journey) {
-      const py = mouseYRef.current || 0;
-      const hoverReveal = THREE.MathUtils.clamp((Math.abs(py) - 0.5) / 0.35, 0, 1);
-      const walkBase = THREE.MathUtils.clamp((JOURNEY_CAM_X - state.camera.position.x) / 12, 0, 1);
-      opacity = THREE.MathUtils.clamp(Math.max(walkBase, hoverReveal), 0, 1);
+      opacity = THREE.MathUtils.clamp((state.camera.position.z + 8) / 10, 0, 1);
     }
     const next = THREE.MathUtils.lerp(fadeRef.current, opacity, 1 - Math.exp(-delta * 6));
 
@@ -3425,6 +3445,14 @@ export default function App() {
   }, [journey]);
 
   useEffect(() => {
+    if (!journey || activeView !== 'default') return undefined;
+    const revealTimer = setTimeout(() => {
+      setExpandedDefault(defaultCardDetails[journey.card] || null);
+    }, 1750);
+    return () => clearTimeout(revealTimer);
+  }, [journey, activeView]);
+
+  useEffect(() => {
     if (!selectedOption) return;
     const onDocClick = () => {
       if (suppressDocClickRef.current) {
@@ -3455,10 +3483,10 @@ export default function App() {
   }, []);
 
 const defaultCards = [
-    { title: 'Careers', subtitle: '', color: '56, 189, 248', kind: 'default', items: [], defaultCard: defaultCardDetails[0] },
-    { title: 'Case Study', subtitle: '', color: '255, 92, 138', kind: 'default', items: [], defaultCard: defaultCardDetails[1] },
-    { title: sphereData[2].title, subtitle: sphereData[2].subtitle, color: sphereData[2].color, kind: 'default', items: [], defaultCard: defaultCardDetails[2] },
-    { title: sphereData[3].title, subtitle: sphereData[3].subtitle, color: sphereData[3].color, kind: 'default', items: [], defaultCard: defaultCardDetails[3] },
+    { title: 'Careers', subtitle: '', color: '56, 189, 248', kind: 'default', items: defaultCardDetails[0].features, defaultCard: defaultCardDetails[0] },
+    { title: 'Case Study', subtitle: '', color: '255, 92, 138', kind: 'default', items: defaultCardDetails[1].features, defaultCard: defaultCardDetails[1] },
+    { title: sphereData[2].title, subtitle: sphereData[2].subtitle, color: sphereData[2].color, kind: 'default', items: defaultCardDetails[2].features, defaultCard: defaultCardDetails[2] },
+    { title: sphereData[3].title, subtitle: sphereData[3].subtitle, color: sphereData[3].color, kind: 'default', items: defaultCardDetails[3].features, defaultCard: defaultCardDetails[3] },
   ].map((card, i) => ({ ...card, stairIndex: i }));
 
   const productCardColors = ['0, 229, 255', '255, 92, 138', '124, 92, 255', '255, 184, 77'];
@@ -3527,7 +3555,7 @@ const defaultCards = [
       <div className="scene-canvas-wrap">
         <Canvas
           camera={{ position: [-(CAMERA_RANGE / 2), 0, 18], fov: 45 }}
-          dpr={[1, 1.25]}
+          dpr={[1, 1.1]}
           gl={{ antialias: true, alpha: true }}
           style={{ position: 'relative', zIndex: 1, background: 'transparent' }}
         >
@@ -3554,13 +3582,19 @@ const defaultCards = [
                   isMobile={isMobile}
                   dnaLength={sceneDnaLength}
                   dnaOffset={sceneDnaOffset}
-                  onSelect={() => setJourney({ card: i })}
+                  onSelect={() => {
+                    setExpandedDefault(null);
+                    setJourney({ card: i, target: getJourneyTarget(activeView, i, isMobile) });
+                  }}
                   onCardClick={card.product
                     ? () => setExpandedProduct(card.product)
                     : card.service
                       ? () => setExpandedService(card.service)
                       : card.defaultCard
-                        ? () => setExpandedDefault(card.defaultCard)
+                        ? () => {
+                            setExpandedDefault(null);
+                            setJourney({ card: i, target: getJourneyTarget(activeView, i, isMobile) });
+                          }
                         : undefined}
                   selectedIndex={selectedOption && selectedOption.card === i ? selectedOption.option : null}
                   onOptionClick={(opt) => { suppressDocClickRef.current = true; setSelectedOption((prev) => (prev ? null : { card: i, option: opt })); }}
@@ -3579,7 +3613,7 @@ const defaultCards = [
               )}
             <CameraTracker length={CAMERA_RANGE} journey={journey} mouseXRef={mouseXRef} mouseYRef={mouseYRef} isMobile={isMobile} />
 
-            <Scroll html style={{ width: '100vw', height: '100vh', pointerEvents: journey ? 'none' : 'auto' }}>
+            <Scroll html style={{ width: '100vw', height: '100vh', opacity: journey ? 0 : 1, pointerEvents: journey ? 'none' : 'auto' }}>
 
               <HeroLogoSection
                 onServices={() => changeView('services')}
@@ -3631,8 +3665,14 @@ const defaultCards = [
         </Canvas>
       </div>
 
-      {journey && (
-        <button className="journey-back" onClick={() => { setSelectedOption(null); setJourney(null); }}>Back</button>
+      {journey && !expandedDefault && (
+        <button
+          className="journey-close"
+          onClick={() => { setSelectedOption(null); setExpandedDefault(null); setJourney(null); }}
+          aria-label="Close journey"
+        >
+          &times;
+        </button>
       )}
     </div>
     <ProductDetailOverlay
@@ -3646,7 +3686,12 @@ const defaultCards = [
           : expandedDefault
             ? defaultCards[defaultCardDetails.indexOf(expandedDefault)]?.color || '0, 229, 255'
             : '0, 229, 255'}
-      onClose={() => { setExpandedProduct(null); setExpandedService(null); setExpandedDefault(null); }}
+      onClose={() => {
+        setExpandedProduct(null);
+        setExpandedService(null);
+        setExpandedDefault(null);
+        setJourney(null);
+      }}
     />
     {showAbout && <AboutUsOverlay onClose={() => setShowAbout(false)} />}
     </>
