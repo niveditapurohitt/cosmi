@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Inter:wght@300;400&family=Fredoka:wght@400..700&family=Bungee&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@500;600;700&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Inter:wght@300;400&family=Fredoka:wght@400..700&family=Bungee&display=swap');
 
 body,
 html,
@@ -599,7 +599,11 @@ p {
 
 .hero-modern h1 em {
     color: #bcefff;
-    font-style: normal;
+    font-family: 'Dancing Script', cursive;
+    font-size: 1.12em;
+    font-style: italic;
+    font-weight: 600;
+    letter-spacing: -0.035em;
     text-shadow: 0 0 30px rgba(0, 229, 255, 0.32);
 }
 
