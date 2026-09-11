@@ -827,7 +827,11 @@ function LaunchEvolutionStage({ scrollStart, scrollEnd }) {
                   <circle cx="4" cy="4" r="2" />
                 </svg>
               </a>
-              <button onPointerDown={(event) => { event.stopPropagation(); setShowWhatsApp(true); }} className="social-link" title="WhatsApp" aria-label="WhatsApp">WA</button>
+              <button onPointerDown={(event) => { event.stopPropagation(); setShowWhatsApp(true); }} className="social-link" title="WhatsApp" aria-label="WhatsApp">
+                <svg viewBox="0 0 24 24" fill="currentColor" className="social-icon" aria-hidden="true">
+                  <path d="M12.05 2a9.9 9.9 0 0 0-8.39 15.16L2.25 22l4.98-1.31A9.9 9.9 0 1 0 12.05 2Zm0 17.99a8.1 8.1 0 0 1-4.14-1.14l-.3-.18-2.95.77.79-2.87-.2-.3a8.1 8.1 0 1 1 6.8 3.72Zm4.45-6.06c-.24-.12-1.41-.7-1.63-.77-.22-.08-.38-.12-.54.12-.16.24-.62.77-.76.93-.14.16-.28.18-.52.06a6.5 6.5 0 0 1-1.92-1.18 7.2 7.2 0 0 1-1.33-1.65c-.14-.24 0-.37.11-.49l.36-.42c.12-.14.16-.24.24-.4.08-.16.04-.3-.02-.42-.06-.12-.54-1.3-.74-1.78-.2-.47-.4-.41-.54-.42h-.47c-.16 0-.42.06-.64.3-.22.24-.84.83-.84 2.02 0 1.2.87 2.34 1 2.5.12.16 1.7 2.6 4.13 3.65.58.25 1.03.4 1.38.5.58.19 1.11.16 1.53.1.47-.07 1.41-.58 1.61-1.13.2-.57.2-1.05.14-1.14-.06-.1-.22-.16-.46-.28Z" />
+                </svg>
+              </button>
             </div>
           )}
         </div>
@@ -910,16 +914,6 @@ function HeroLogoSection({ onServices, onProducts, onDefault, activeView }) {
         <h1>
           <span className="hero-tech-line">
             <span className="hero-tech-label">Technology that</span>
-            <video
-              className="hero-chameleon-walk"
-              //src="/bluechameleon.mp4"
-              autoPlay
-              muted
-              loop
-              playsInline
-              onLoadedMetadata={(event) => { event.currentTarget.playbackRate = 0.02; }}
-              aria-hidden="true"
-            />
           </span>
           <span> evolves</span>
           <br />
