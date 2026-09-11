@@ -747,17 +747,24 @@ function LaunchEvolutionStage({ scrollStart, scrollEnd }) {
   const lastParticleFadeRef = useRef(-1);
   const lastCopyFadeRef = useRef(-1);
   const lastTransformRef = useRef('');
+  const linksVisibleRef = useRef(false);
+  const [linksVisible, setLinksVisible] = useState(false);
   const [showWhatsApp, setShowWhatsApp] = useState(false);
 
   useFrame(() => {
     const offset = scroll.offset;
+    const entrance = smoothstep(scrollStart, Math.min(1, scrollStart + 0.08), offset);
     if (stageRef.current) {
-      const entrance = smoothstep(scrollStart, Math.min(1, scrollStart + 0.08), offset);
       stageRef.current.style.opacity = entrance.toFixed(3);
       // Let wheel gestures reach the ScrollControls element behind the overlay.
       stageRef.current.style.pointerEvents = 'none';
     }
     const progress = THREE.MathUtils.clamp((offset - scrollStart) / Math.max(0.0001, scrollEnd - scrollStart), 0, 1);
+    const nextLinksVisible = entrance >= 0.99 && progress >= 0.15;
+    if (nextLinksVisible !== linksVisibleRef.current) {
+      linksVisibleRef.current = nextLinksVisible;
+      setLinksVisible(nextLinksVisible);
+    }
     const titleFade = smoothstep(0.08, 0.68, progress);
     const titleSlide = (1 - smoothstep(0.08, 0.68, progress)) * 44;
     const titleShift = (1 - smoothstep(0.12, 0.68, progress)) * 26;
@@ -798,33 +805,31 @@ function LaunchEvolutionStage({ scrollStart, scrollEnd }) {
             <span className="image-label">Evolution</span>
           </div>
           <p ref={captionRef} className="image-caption typing-caption">The future starts here</p>
-          <div className="social-links">
-            <a href="https://www.instagram.com/cosmichameleon.io" target="_blank" rel="noopener noreferrer" className="social-link" title="Instagram">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="social-icon">
-                <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
-                <circle cx="12" cy="12" r="5" />
-                <circle cx="17.5" cy="6.5" r="1.5" fill="currentColor" stroke="none" />
-              </svg>
-            </a>
-            <a href="mailto:hello@cosmichameleon.com" className="social-link" title="Email">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="social-icon">
-                <rect x="2" y="4" width="20" height="16" rx="2" />
-                <polyline points="22,4 12,13 2,4" />
-              </svg>
-            </a>
-            <a href="https://www.linkedin.com/company/cosmichameleon/" target="_blank" rel="noopener noreferrer" className="social-link" title="LinkedIn">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="social-icon">
-                <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-4 0v7h-4v-7a6 6 0 0 1 6-6z" />
-                <rect x="2" y="9" width="4" height="12" />
-                <circle cx="4" cy="4" r="2" />
-              </svg>
-            </a>
-            <button onPointerDown={(e) => { e.stopPropagation(); setShowWhatsApp(true); }} className="social-link" title="WhatsApp">
-              <svg viewBox="0 0 24 24" fill="currentColor" className="social-icon">
-                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
-              </svg>
-            </button>
-          </div>
+          {linksVisible && (
+            <div className="social-links launch-social-links" style={{ pointerEvents: 'auto' }}>
+              <a href="https://www.instagram.com/cosmichameleon.io" target="_blank" rel="noopener noreferrer" className="social-link" title="Instagram" aria-label="Instagram">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="social-icon">
+                  <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+                  <circle cx="12" cy="12" r="5" />
+                  <circle cx="17.5" cy="6.5" r="1.5" fill="currentColor" stroke="none" />
+                </svg>
+              </a>
+              <a href="mailto:hello@cosmichameleon.com" className="social-link" title="Email" aria-label="Email">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="social-icon">
+                  <rect x="2" y="4" width="20" height="16" rx="2" />
+                  <polyline points="22,4 12,13 2,4" />
+                </svg>
+              </a>
+              <a href="https://www.linkedin.com/company/cosmichameleon/" target="_blank" rel="noopener noreferrer" className="social-link" title="LinkedIn" aria-label="LinkedIn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="social-icon">
+                  <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-4 0v7h-4v-7a6 6 0 0 1 6-6z" />
+                  <rect x="2" y="9" width="4" height="12" />
+                  <circle cx="4" cy="4" r="2" />
+                </svg>
+              </a>
+              <button onPointerDown={(event) => { event.stopPropagation(); setShowWhatsApp(true); }} className="social-link" title="WhatsApp" aria-label="WhatsApp">WA</button>
+            </div>
+          )}
         </div>
       </div>
       {showWhatsApp && <WhatsAppForm onClose={() => setShowWhatsApp(false)} />}
@@ -3119,7 +3124,6 @@ const serviceCatalog = [
     overview: 'Design and delivery of intelligent systems that automate work, augment teams, and create new digital capabilities.',
     features: ['AI Agent Development', 'AI Automation', 'Generative AI Solutions', 'RAG & Knowledge Systems', 'AI Chatbots', 'AI Voice Agents', 'AI Copilots', 'Multi-Agent Systems', 'MCP & AI Tool Integration'],
     customers: 'Modern businesses building AI-powered products, workflows, and customer experiences.',
-    model: 'Services 01-09',
   },
   {
     title: 'Software & Product Development',
@@ -3127,7 +3131,6 @@ const serviceCatalog = [
     overview: 'End-to-end product engineering for scalable digital products, from early validation through launch and ongoing growth.',
     features: ['AI SaaS Development', 'Custom Software Development', 'SaaS Product Development', 'Web Application Development', 'E-Commerce Development', 'Mobile App Development', 'MVP Development', 'Startup Product Development', 'API Development', 'API & System Integration', 'Legacy Software Modernization'],
     customers: 'Startups, growing companies, and established teams launching or modernizing digital products.',
-    model: 'Services 10-20',
   },
   {
     title: 'Design & Digital Experience',
@@ -3135,7 +3138,6 @@ const serviceCatalog = [
     overview: 'Experience design that turns complex products into clear, consistent, and enjoyable journeys for users.',
     features: ['UI/UX Design', 'Product Design', 'Design Systems'],
     customers: 'Organizations creating new products or improving the usability and consistency of existing experiences.',
-    model: 'Services 21-23',
   },
   {
     title: 'Cloud & Engineering',
@@ -3143,7 +3145,6 @@ const serviceCatalog = [
     overview: 'Cloud architecture and engineering practices that improve reliability, delivery speed, and operational scale.',
     features: ['Cloud Architecture', 'Cloud Migration', 'AI Infrastructure', 'DevOps & CI/CD', 'Docker & Kubernetes', 'MLOps & LLMOps'],
     customers: 'Teams scaling infrastructure, modernizing delivery, or operating AI workloads in production.',
-    model: 'Services 24-29',
   },
   {
     title: 'Data & AI Analytics',
@@ -3151,7 +3152,6 @@ const serviceCatalog = [
     overview: 'Data foundations and intelligent analytics that make business information useful, searchable, and actionable.',
     features: ['Data Engineering', 'Data Pipelines & ETL', 'Data Warehousing', 'Business Intelligence', 'AI Analytics & Forecasting', 'AI Document Processing', 'Computer Vision', 'Multimodal AI', 'AI Search & Semantic Search', 'AI Content Systems'],
     customers: 'Businesses turning operational data into reporting, predictions, automation, and better decisions.',
-    model: 'Services 30-39',
   },
   {
     title: 'Security & Technology Consulting',
@@ -3159,7 +3159,6 @@ const serviceCatalog = [
     overview: 'Security-minded technology guidance that reduces risk and connects technical decisions to business priorities.',
     features: ['AI Cybersecurity', 'Application Security', 'Technology Consulting', 'AI Strategy & Roadmaps', 'Digital Transformation'],
     customers: 'Organizations assessing risk, planning transformation, or aligning technology with business goals.',
-    model: 'Services 40-44',
   },
   {
     title: 'Growth & Technology Talent',
@@ -3167,7 +3166,6 @@ const serviceCatalog = [
     overview: 'Growth systems and flexible technology talent that help teams acquire customers and extend delivery capacity.',
     features: ['CRM Implementation', 'CRM & Sales Automation', 'B2B Lead Generation', 'Digital Marketing & Growth', 'AI Talent & IT Staffing', 'Dedicated Development Teams'],
     customers: 'Businesses expanding revenue operations, hiring technical capability, or adding dedicated delivery teams.',
-    model: 'Services 45-50',
   },
 ];
 
@@ -3264,54 +3262,56 @@ function scatterValue(index, salt, amount) {
 }
 
 function GlitchText({ children }) {
-  const lettersRef = useRef([]);
+  const wordsRef = useRef([]);
+  const tokens = String(children).split(/(\s+)/);
 
-  const resetLetters = () => {
-    lettersRef.current.forEach((letter) => {
-      if (!letter) return;
-      letter.style.transform = '';
-      letter.style.opacity = '';
-      letter.style.filter = '';
+  const resetWords = () => {
+    wordsRef.current.forEach((word) => {
+      if (!word) return;
+      word.style.transform = '';
+      word.style.opacity = '';
+      word.style.filter = '';
     });
   };
 
-  const distortLetters = (event) => {
+  const distortWords = (event) => {
     const radius = 150;
-    lettersRef.current.forEach((letter) => {
-      if (!letter) return;
-      const rect = letter.getBoundingClientRect();
+    wordsRef.current.forEach((word) => {
+      if (!word) return;
+      const rect = word.getBoundingClientRect();
       const dx = event.clientX - (rect.left + rect.width / 2);
       const dy = event.clientY - (rect.top + rect.height / 2);
       const distance = Math.hypot(dx, dy);
       const strength = Math.max(0, 1 - distance / radius);
-      const x = Number(letter.dataset.scatterX) * strength;
-      const y = Number(letter.dataset.scatterY) * strength;
-      const rotate = Number(letter.dataset.scatterR) * strength;
-      letter.style.transform = `translate3d(${x}px, ${y}px, 0) rotate(${rotate}deg) scale(${1 - strength * 0.45})`;
-      letter.style.opacity = String(1 - strength * 0.72);
-      letter.style.filter = `blur(${(strength * 3.8).toFixed(2)}px)`;
+      const x = Number(word.dataset.scatterX) * strength;
+      const y = Number(word.dataset.scatterY) * strength;
+      const rotate = Number(word.dataset.scatterR) * strength;
+      word.style.transform = `translate3d(${x}px, ${y}px, 0) rotate(${rotate}deg) scale(${1 - strength * 0.12})`;
+      word.style.opacity = String(1 - strength * 0.2);
+      word.style.filter = `blur(${(strength * 1.4).toFixed(2)}px)`;
     });
   };
 
   return (
-    <span className="glitch-text" onPointerMove={distortLetters} onPointerLeave={resetLetters}>
-      {[...String(children)].map((character, index) => (
-        <span
-          key={`${character}-${index}`}
-          className="glitch-letter"
-          ref={(letter) => { lettersRef.current[index] = letter; }}
-          style={{
-            '--letter-index': index,
-            '--scatter-x': `${scatterValue(index, 12.9898, 70)}`,
-            '--scatter-y': `${scatterValue(index, 78.233, 55)}`,
-            '--scatter-r': `${scatterValue(index, 39.417, 45)}`,
-          }}
-          data-scatter-x={scatterValue(index, 12.9898, 70)}
-          data-scatter-y={scatterValue(index, 78.233, 55)}
-          data-scatter-r={scatterValue(index, 39.417, 45)}
-        >
-          {character === ' ' ? '\u00a0' : character}
-        </span>
+    <span className="glitch-text" onPointerMove={distortWords} onPointerLeave={resetWords}>
+      {tokens.map((token, index) => (
+        /^\s+$/.test(token) ? token : (
+          <span
+            key={`${token}-${index}`}
+            className="glitch-word"
+            ref={(word) => { wordsRef.current[index] = word; }}
+            style={{
+              '--scatter-x': `${scatterValue(index, 12.9898, 70)}`,
+              '--scatter-y': `${scatterValue(index, 78.233, 55)}`,
+              '--scatter-r': `${scatterValue(index, 39.417, 45)}`,
+            }}
+            data-scatter-x={scatterValue(index, 12.9898, 70)}
+            data-scatter-y={scatterValue(index, 78.233, 55)}
+            data-scatter-r={scatterValue(index, 39.417, 45)}
+          >
+            {token}
+          </span>
+        )
       ))}
     </span>
   );
@@ -3398,10 +3398,10 @@ function ProductDetailOverlay({ product, service, defaultCard, color, onClose })
             <h3>Target Customers</h3>
             <p><GlitchText>{detail.customers}</GlitchText></p>
           </section>
-          <section>
+          {!service && detail.model && <section>
             <h3>Recommended Business Model</h3>
             <p><GlitchText>{detail.model}</GlitchText></p>
-          </section>
+          </section>}
           {product?.url && (
             <a
               className="product-explore-link"
