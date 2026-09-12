@@ -472,18 +472,66 @@ function CameraTracker({ length, journey, mouseXRef, mouseYRef, isMobile }) {
       }
       if (!journeyMotionRef.current) {
         journeyMotionRef.current = {
+          startX: state.camera.position.x,
+          startY: state.camera.position.y,
           startZ: state.camera.position.z,
-          targetZ: -18,
+          targetX: journey.route === 'service' ? (isMobile ? 0 : SERVICE_TUNNEL_ENTRY_X) : state.camera.position.x,
+          targetY: journey.route === 'service' ? (isMobile ? SERVICE_TUNNEL_MOBILE_ENTRY_Y : SERVICE_TUNNEL_AXIS_Y) : state.camera.position.y,
+          targetZ: journey.route === 'service' ? SERVICE_TUNNEL_ENTRY_Z : SERVICE_TUNNEL_END_Z,
           elapsed: 0,
         };
       }
       const motion = journeyMotionRef.current;
-      motion.elapsed = Math.min(motion.elapsed + delta, 1.65);
-      const progress = motion.elapsed / 1.65;
-      const eased = 1 - Math.pow(1 - progress, 3);
-      state.camera.position.z = THREE.MathUtils.lerp(motion.startZ, motion.targetZ, eased);
-      // Preserve the current framing while the user moves straight through.
-      state.camera.lookAt(state.camera.position.x, isMobile ? state.camera.position.y : 0, -100);
+      motion.elapsed += delta;
+
+      if (journey.route === 'service') {
+        // Start directly at the fixed side entrance, then enter and travel through.
+        const enterProgress = THREE.MathUtils.clamp(
+          motion.elapsed / SERVICE_TUNNEL_ENTER_TIME,
+          0,
+          1,
+        );
+        const enterEased = 1 - Math.pow(1 - enterProgress, 3);
+        const turnProgress = THREE.MathUtils.smoothstep(enterProgress, 0.7, 1);
+        const entryX = isMobile ? 0 : SERVICE_TUNNEL_ENTRY_X;
+        const entryY = isMobile ? SERVICE_TUNNEL_MOBILE_ENTRY_Y : SERVICE_TUNNEL_AXIS_Y;
+        state.camera.position.x = entryX;
+        state.camera.position.y = entryY;
+        state.camera.position.z = THREE.MathUtils.lerp(SERVICE_TUNNEL_ENTRY_Z, SERVICE_TUNNEL_AXIS_Z, enterEased);
+        state.camera.lookAt(
+          isMobile ? 0 : THREE.MathUtils.lerp(SERVICE_TUNNEL_ENTRY_X, SERVICE_TUNNEL_END_X + 30, turnProgress),
+          isMobile ? THREE.MathUtils.lerp(SERVICE_TUNNEL_MOBILE_ENTRY_Y, SERVICE_TUNNEL_MOBILE_END_Y + 30, turnProgress) : SERVICE_TUNNEL_AXIS_Y,
+          SERVICE_TUNNEL_AXIS_Z,
+        );
+
+        const tunnelProgress = THREE.MathUtils.clamp(
+          (motion.elapsed - SERVICE_TUNNEL_ENTER_TIME) / SERVICE_TUNNEL_TRAVEL_TIME,
+          0,
+          1,
+        );
+        const tunnelEased = 1 - Math.pow(1 - tunnelProgress, 3);
+        if (tunnelProgress > 0) {
+          state.camera.position.x = isMobile
+            ? 0
+            : THREE.MathUtils.lerp(SERVICE_TUNNEL_ENTRY_X, SERVICE_TUNNEL_END_X, tunnelEased);
+          state.camera.position.y = isMobile
+            ? THREE.MathUtils.lerp(SERVICE_TUNNEL_MOBILE_ENTRY_Y, SERVICE_TUNNEL_MOBILE_END_Y, tunnelEased)
+            : SERVICE_TUNNEL_AXIS_Y;
+          state.camera.position.z = SERVICE_TUNNEL_AXIS_Z;
+          state.camera.lookAt(
+            isMobile ? 0 : SERVICE_TUNNEL_END_X + 30,
+            isMobile ? SERVICE_TUNNEL_MOBILE_END_Y + 30 : SERVICE_TUNNEL_AXIS_Y,
+            SERVICE_TUNNEL_AXIS_Z,
+          );
+        }
+      } else {
+        motion.elapsed = Math.min(motion.elapsed, 1.65);
+        const progress = motion.elapsed / 1.65;
+        const eased = 1 - Math.pow(1 - progress, 3);
+        state.camera.position.z = THREE.MathUtils.lerp(motion.startZ, motion.targetZ, eased);
+        // Preserve the current framing while the user moves straight through.
+        state.camera.lookAt(state.camera.position.x, isMobile ? state.camera.position.y : 0, -100);
+      }
     } else {
       journeyMotionRef.current = null;
       journeyScrollRef.current = null;
@@ -1943,6 +1991,11 @@ const mainVideoActive = !isJourneying && !revealed && nearPlay;
         if (subTitleBackRefs.current[i]) subTitleBackRefs.current[i].visible = false;
 if (subTextRefs.current[i]) subTextRefs.current[i].visible = false;
       }
+      if (journey.route === 'service') {
+        // Services use a first-person DNA tunnel, not the default card journey.
+        groupRef.current.visible = false;
+        return;
+      }
       if (isJourneyTarget) {
         groupRef.current.visible = true;
         if (journeyStartZRef.current === null) journeyStartZRef.current = posYZRef.current.z;
@@ -2645,6 +2698,19 @@ const JOURNEY_WALK_SPEED = 26;
 const JOURNEY_CAM_ARRIVE = 42;
 const JOURNEY_LEFT_START = -60;
 
+// The service journey enters from the side at the helix midpoint, then travels along its X axis.
+const SERVICE_TUNNEL_ENTRY_X = -5;
+const SERVICE_TUNNEL_END_X = 33;
+const SERVICE_TUNNEL_AXIS_Y = 0;
+const SERVICE_TUNNEL_AXIS_Z = 0;
+const SERVICE_TUNNEL_ENTRY_Z = 16;
+const SERVICE_TUNNEL_MOBILE_ENTRY_Y = -11;
+const SERVICE_TUNNEL_MOBILE_END_Y = 27;
+const SERVICE_TUNNEL_DNA_RADIUS_SCALE = 0.65;
+const SERVICE_TUNNEL_END_Z = -18;
+const SERVICE_TUNNEL_ENTER_TIME = 0.85;
+const SERVICE_TUNNEL_TRAVEL_TIME = 1.65;
+
 function getJourneyTarget(view, stairIndex, isMobile) {
   const worldX = view === 'default'
     ? -25 + stairIndex * 10
@@ -3209,10 +3275,25 @@ const defaultCardDetails = [
 function DNAHelix({ journey, mouseYRef, isMobile, length = DNA_LENGTH, offset = DNA_OFFSET }) {
   const ref = useRef();
   const fadeRef = useRef(1);
+  const tunnelRadiusRef = useRef(1);
   const mobileCameraRange = CAMERA_RANGE * 0.68;
+  const baseScale = isMobile ? 0.78 : 1;
 
   useFrame((state, delta) => {
     if (!ref.current) return;
+    const isInsideServiceTunnel = journey?.route === 'service'
+      && Math.abs(state.camera.position.z - SERVICE_TUNNEL_AXIS_Z) < 0.5;
+    const targetRadiusScale = isInsideServiceTunnel ? SERVICE_TUNNEL_DNA_RADIUS_SCALE : 1;
+    tunnelRadiusRef.current = THREE.MathUtils.lerp(
+      tunnelRadiusRef.current,
+      targetRadiusScale,
+      1 - Math.exp(-delta * 7),
+    );
+    ref.current.scale.set(
+      baseScale,
+      baseScale * tunnelRadiusRef.current,
+      baseScale * tunnelRadiusRef.current,
+    );
     const target = isMobile
         ? 0
         : journey
@@ -3223,7 +3304,9 @@ function DNAHelix({ journey, mouseYRef, isMobile, length = DNA_LENGTH, offset = 
 
     let opacity = 1;
     if (journey) {
-      opacity = THREE.MathUtils.clamp((state.camera.position.z + 8) / 10, 0, 1);
+      opacity = journey.route === 'service'
+        ? 1
+        : THREE.MathUtils.clamp((state.camera.position.z + 8) / 10, 0, 1);
     }
     const next = THREE.MathUtils.lerp(fadeRef.current, opacity, 1 - Math.exp(-delta * 6));
 
@@ -3243,9 +3326,9 @@ function DNAHelix({ journey, mouseYRef, isMobile, length = DNA_LENGTH, offset = 
     <group
       ref={ref}
       position={[isMobile ? 0 : offset, isMobile ? (mobileCameraRange - length) / 2 : 0, 0]}
-      scale={isMobile ? 0.78 : 1}
+      scale={[baseScale, baseScale, baseScale]}
     >
-      <ActiveDNA key={length} length={length} />
+      <ActiveDNA key={`${length}-${journey?.route === 'service' ? 'tunnel' : 'orbit'}`} length={length} tunnelMode={journey?.route === 'service'} />
     </group>
   );
 }
@@ -3447,6 +3530,14 @@ export default function App() {
   }, [journey, activeView]);
 
   useEffect(() => {
+    if (!journey || activeView !== 'services' || journey.route !== 'service') return undefined;
+    const revealTimer = setTimeout(() => {
+      setExpandedService(serviceCatalog[journey.card] || null);
+    }, (SERVICE_TUNNEL_ENTER_TIME + SERVICE_TUNNEL_TRAVEL_TIME) * 1000);
+    return () => clearTimeout(revealTimer);
+  }, [journey, activeView]);
+
+  useEffect(() => {
     if (!selectedOption) return;
     const onDocClick = () => {
       if (suppressDocClickRef.current) {
@@ -3583,7 +3674,10 @@ const defaultCards = [
                   onCardClick={card.product
                     ? () => setExpandedProduct(card.product)
                     : card.service
-                      ? () => setExpandedService(card.service)
+                      ? () => {
+                          setExpandedService(null);
+                          setJourney({ card: i, route: 'service' });
+                        }
                       : card.defaultCard
                         ? () => {
                             setExpandedDefault(null);

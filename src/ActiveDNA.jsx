@@ -18,7 +18,7 @@ const circleTexture = (() => {
     return new THREE.CanvasTexture(canvas);
 })();
 
-export default function ActiveDNA({ length = 100, breaks = [] }) {
+export default function ActiveDNA({ length = 100, breaks = [], tunnelMode = false }) {
     const groupRef = useRef();
     const scroll = useScroll();
     const currentScale = useRef(1);
@@ -161,7 +161,7 @@ export default function ActiveDNA({ length = 100, breaks = [] }) {
         }
 
         if (groupRef.current && scroll) {
-            const targetRotation = scroll.offset * Math.PI * 10;
+            const targetRotation = tunnelMode ? 0 : scroll.offset * Math.PI * 10;
             groupRef.current.rotation.x = THREE.MathUtils.lerp(groupRef.current.rotation.x, targetRotation, 0.15);
 
             const offset = scroll.offset;
